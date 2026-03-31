@@ -1,0 +1,31 @@
+name: first_autocorrelation_inequality
+category: analysis
+description: >
+  Find a non-negative step function f on [-1/4, 1/4] (discretized as a list of
+  num_intervals equally-spaced values) that minimizes the first autocorrelation
+  constant C₁ = max_{|t| ≤ 1/2} (f*f)(t) / (∫_{-1/4}^{1/4} f(x) dx)².
+  This provides an upper bound on the true C₁ constant arising in additive
+  combinatorics.  Currently known: 1.28 ≤ C₁ ≤ 1.5098.
+
+output_type: "list[float]"
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  num_intervals: 600
+
+timeout_seconds: 120.0
+maximize: false
+
+known_best_score: 1.5052939684401607
+
+source: "AlphaEvolve (Google DeepMind)"
+tags:
+  - analysis
+  - open-problem
+  - autocorrelation
+  - additive-combinatorics
+  - optimization
