@@ -1,7 +1,5 @@
 """Tests for core/pipeline.py — execute_and_evaluate and execute_and_evaluate_batch."""
 
-from __future__ import annotations
-
 import numpy as np
 import pytest
 

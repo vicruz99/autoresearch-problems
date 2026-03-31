@@ -8,8 +8,6 @@ This file is standalone and library-agnostic — it does NOT import from
 autoresearch_problems.  The only dependency is numpy.
 """
 
-from __future__ import annotations
-
 import numpy as np
 
 

@@ -9,8 +9,6 @@ Inspired by the subprocess/pickle pattern in
 ``BaseEvaluator._run_algorithm_with_timeout()``.
 """
 
-from __future__ import annotations
-
 import concurrent.futures
 import os
 import pickle

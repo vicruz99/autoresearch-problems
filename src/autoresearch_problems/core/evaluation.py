@@ -1,7 +1,5 @@
 """Evaluation utility: run_evaluation(spec, output) -> EvalResult."""
 
-from __future__ import annotations
-
 import concurrent.futures
 import os
 import time
