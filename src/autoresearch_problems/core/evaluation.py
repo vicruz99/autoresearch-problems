@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import concurrent.futures
+import os
 import time
 from typing import Any
 
@@ -50,3 +52,46 @@ def run_evaluation(spec: ProblemSpec, output: Any) -> EvalResult:
             execution_time=time.monotonic() - start,
             error=str(exc),
         )
+
+
+def run_evaluation_batch(
+    spec: ProblemSpec,
+    outputs: list[Any],
+    max_workers: int | None = None,
+) -> list[EvalResult]:
+    """Evaluate multiple outputs against the same spec in parallel.
+
+    Uses :class:`concurrent.futures.ThreadPoolExecutor`.  Each evaluation is
+    independent and calls :func:`run_evaluation` which never raises.
+
+    Parameters
+    ----------
+    spec:
+        The :class:`ProblemSpec` to evaluate against.
+    outputs:
+        List of candidate outputs to evaluate.
+    max_workers:
+        Maximum number of parallel workers.  Defaults to
+        ``min(len(outputs), (os.cpu_count() or 1) * 4)``.
+
+    Returns
+    -------
+    list[EvalResult]
+        Results in the same order as *outputs*.
+    """
+    if not outputs:
+        return []
+
+    collected: dict[int, EvalResult] = {}
+
+    def _eval(index: int, output: Any) -> tuple[int, EvalResult]:
+        return index, run_evaluation(spec, output)
+
+    workers = max_workers or min(len(outputs), (os.cpu_count() or 1) * 4)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_eval, i, o) for i, o in enumerate(outputs)]
+        for future in concurrent.futures.as_completed(futures):
+            idx, value = future.result()
+            collected[idx] = value
+
+    return [collected[i] for i in range(len(outputs))]

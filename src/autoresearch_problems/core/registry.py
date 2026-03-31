@@ -91,6 +91,7 @@ class Registry:
             known_best_score=raw.get("known_best_score"),
             initial_prompt=initial_prompt,
             initial_program=initial_program,
+            function_name=raw.get("function_name"),
             source=raw.get("source", ""),
             tags=raw.get("tags", []),
         )
