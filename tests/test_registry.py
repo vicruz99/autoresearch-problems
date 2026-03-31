@@ -11,6 +11,7 @@ def test_list_categories_returns_non_empty():
     assert len(categories) > 0
     assert "combinatorics" in categories
     assert "geometry" in categories
+    assert "analysis" in categories
 
 
 def test_list_problems_returns_all():
@@ -18,6 +19,7 @@ def test_list_problems_returns_all():
     assert "combinatorics/cap_set" in problems
     assert "combinatorics/online_bin_packing" in problems
     assert "geometry/circle_packing" in problems
+    assert "analysis/kissing_number" in problems
 
 
 def test_list_problems_filtered_by_category():
@@ -25,6 +27,8 @@ def test_list_problems_filtered_by_category():
     assert all(p.startswith("combinatorics/") for p in combinatorics)
     geometry = registry.list_problems(category="geometry")
     assert all(p.startswith("geometry/") for p in geometry)
+    analysis = registry.list_problems(category="analysis")
+    assert all(p.startswith("analysis/") for p in analysis)
 
 
 def test_load_cap_set_returns_problem_spec():
@@ -35,6 +39,12 @@ def test_load_cap_set_returns_problem_spec():
     assert spec.evaluator_entrypoint == "evaluate"
     assert spec.evaluator_code != ""
     assert spec.maximize is True
+
+
+def test_load_cap_set_has_no_function_name():
+    """ProblemSpec must NOT have a function_name field."""
+    spec = registry.load("combinatorics/cap_set")
+    assert not hasattr(spec, "function_name")
 
 
 def test_load_circle_packing_returns_problem_spec():
@@ -50,8 +60,23 @@ def test_load_online_bin_packing_returns_problem_spec():
     assert spec.parameters["num_items"] == 100
 
 
+def test_load_kissing_number_returns_problem_spec():
+    spec = registry.load("analysis/kissing_number")
+    assert isinstance(spec, ProblemSpec)
+    assert spec.name == "kissing_number"
+    assert spec.category == "analysis"
+    assert spec.parameters["d"] == 3
+    assert spec.known_best_score == 12.0
+
+
 def test_load_problem_has_optional_files():
     spec = registry.load("combinatorics/cap_set")
+    assert spec.initial_prompt is not None and len(spec.initial_prompt) > 0
+    assert spec.initial_program is not None and len(spec.initial_program) > 0
+
+
+def test_load_kissing_number_has_optional_files():
+    spec = registry.load("analysis/kissing_number")
     assert spec.initial_prompt is not None and len(spec.initial_prompt) > 0
     assert spec.initial_program is not None and len(spec.initial_program) > 0
 
@@ -59,3 +84,9 @@ def test_load_problem_has_optional_files():
 def test_load_nonexistent_problem_raises():
     with pytest.raises(FileNotFoundError):
         registry.load("combinatorics/does_not_exist")
+
+
+def test_problem_spec_has_no_evaluate_method():
+    """ProblemSpec must NOT have an evaluate() method."""
+    spec = registry.load("combinatorics/cap_set")
+    assert not hasattr(spec, "evaluate")

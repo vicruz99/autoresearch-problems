@@ -5,7 +5,6 @@ description: >
   that contains no three-term arithmetic progression (cap set).
   A valid cap set S satisfies: for all x, y, z in S, x + y + z ≠ 0 (mod 3).
 
-function_name: solve
 output_type: numpy_array
 
 evaluator_entrypoint: evaluate
