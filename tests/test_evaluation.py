@@ -127,3 +127,50 @@ def evaluate(output, expected=None, **kwargs):
 
     result_wrong = run_evaluation(spec, 99)
     assert result_wrong.score == 0.0
+
+
+# ── run_evaluation_batch ──────────────────────────────────────────────────────
+
+from autoresearch_problems.core.evaluation import run_evaluation_batch
+
+
+def test_run_evaluation_batch_returns_correct_length():
+    spec = registry.load("combinatorics/cap_set")
+    outputs = [
+        np.array([[0, 0, 0, 0, 0, 0, 0, 0]]),
+        np.array([[1, 0, 0, 0, 0, 0, 0, 0]]),
+        np.array([[2, 1, 0, 0, 0, 0, 0, 0]]),
+    ]
+    results = run_evaluation_batch(spec, outputs)
+    assert len(results) == 3
+
+
+def test_run_evaluation_batch_preserves_order():
+    spec = registry.load("combinatorics/cap_set")
+    # Two single-element outputs: scores should both be 1.0
+    S1 = np.array([[0, 0, 0, 0, 0, 0, 0, 0]])
+    S2 = np.array([[1, 0, 0, 0, 0, 0, 0, 0]])
+    results = run_evaluation_batch(spec, [S1, S2])
+    assert all(isinstance(r, EvalResult) for r in results)
+    assert results[0].score == 1.0
+    assert results[1].score == 1.0
+
+
+def test_run_evaluation_batch_empty():
+    spec = registry.load("combinatorics/cap_set")
+    assert run_evaluation_batch(spec, []) == []
+
+
+def test_run_evaluation_batch_handles_errors():
+    """Invalid outputs should return invalid EvalResult, not raise."""
+    spec = registry.load("combinatorics/cap_set")
+    outputs = [None, np.array([[0, 0, 0, 0, 0, 0, 0, 0]])]
+    results = run_evaluation_batch(spec, outputs)
+    assert len(results) == 2
+    assert not results[0].valid
+    assert results[1].valid
+
+
+def test_run_evaluation_batch_exported_from_init():
+    from autoresearch_problems import run_evaluation_batch as rb
+    assert callable(rb)

@@ -41,10 +41,11 @@ def test_load_cap_set_returns_problem_spec():
     assert spec.maximize is True
 
 
-def test_load_cap_set_has_no_function_name():
-    """ProblemSpec must NOT have a function_name field."""
+def test_load_cap_set_has_function_name():
+    """ProblemSpec.function_name should be loaded from spec.yaml."""
     spec = registry.load("combinatorics/cap_set")
-    assert not hasattr(spec, "function_name")
+    assert hasattr(spec, "function_name")
+    assert spec.function_name == "solve"
 
 
 def test_load_circle_packing_returns_problem_spec():

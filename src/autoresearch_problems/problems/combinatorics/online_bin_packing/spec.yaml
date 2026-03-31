@@ -8,6 +8,7 @@ description: >
 
 output_type: callable
 
+function_name: solve
 evaluator_entrypoint: evaluate
 evaluator_dependencies:
   - "numpy>=1.24"

@@ -10,6 +10,7 @@ description: >
 
 output_type: numpy_array
 
+function_name: solve
 evaluator_entrypoint: evaluate
 evaluator_dependencies:
   - "numpy>=1.24"

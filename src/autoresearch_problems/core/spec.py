@@ -37,6 +37,7 @@ class ProblemSpec:
     # ── Optional hints for frameworks ────────────────────────────────────────
     initial_prompt: str | None = None
     initial_program: str | None = None
+    function_name: str | None = None   # suggested function name (e.g. "solve")
 
     # ── Provenance ────────────────────────────────────────────────────────────
     source: str = ""
