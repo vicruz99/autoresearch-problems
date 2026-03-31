@@ -1,9 +1,0 @@
-pyyaml>=6.0
-numpy>=1.24
-
-[dev]
-pytest>=7.0
-cloudpickle>=3.0
-
-[runners]
-cloudpickle>=3.0
