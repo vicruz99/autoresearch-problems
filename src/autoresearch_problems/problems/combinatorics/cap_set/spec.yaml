@@ -1,0 +1,28 @@
+name: cap_set
+category: combinatorics
+description: >
+  Find the largest subset of F_3^n (the n-dimensional vector space over GF(3))
+  that contains no three-term arithmetic progression (cap set).
+  A valid cap set S satisfies: for all x, y, z in S, x + y + z ≠ 0 (mod 3).
+
+function_name: solve
+output_type: numpy_array
+
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 8
+  q: 3
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+
+source: "FunSearch (DeepMind)"
+tags:
+  - combinatorics
+  - open-problem
+  - arithmetic-progressions
+  - finite-fields

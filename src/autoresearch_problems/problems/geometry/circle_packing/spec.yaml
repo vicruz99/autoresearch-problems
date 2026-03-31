@@ -1,0 +1,26 @@
+name: circle_packing
+category: geometry
+description: >
+  Pack n non-overlapping unit-radius circles (or equivalently, place n points
+  in the unit square [0,1]^2) so that the minimum pairwise distance between
+  centres is maximised.  The score is the minimum pairwise distance.
+
+function_name: solve
+output_type: numpy_array
+
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 26
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+
+source: "ShinkaEvolve (Sakana AI) / classic packing"
+tags:
+  - geometry
+  - packing
+  - continuous-optimisation

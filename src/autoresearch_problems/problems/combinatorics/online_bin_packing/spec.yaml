@@ -1,0 +1,28 @@
+name: online_bin_packing
+category: combinatorics
+description: >
+  Online bin packing: items with sizes in (0, 1] arrive one at a time and must
+  be assigned immediately and irrevocably to a bin of capacity 1.0.  The goal
+  is to minimise the total number of bins used.  The score is the negative
+  number of bins (so higher = fewer bins = better).
+
+function_name: solve
+output_type: callable
+
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  num_items: 100
+  seed: 42
+
+timeout_seconds: 60.0
+maximize: true
+
+source: "FunSearch (DeepMind)"
+tags:
+  - combinatorics
+  - online-algorithms
+  - bin-packing
+  - NP-hard
