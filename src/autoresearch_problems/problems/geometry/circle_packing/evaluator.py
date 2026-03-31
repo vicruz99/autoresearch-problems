@@ -3,16 +3,17 @@
 Given n centres in the unit square [0,1]^2, the score is the minimum pairwise
 Euclidean distance between any two centres.  All centres must lie strictly
 inside [0,1]^2 (boundary inclusive).
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from autoresearch_problems.core.result import EvalResult
 
-
-def evaluate(output: object, *, n: int = 26) -> EvalResult:
+def evaluate(output: object, n: int = 26, **kwargs) -> dict:
     """Score a candidate circle packing.
 
     Parameters
@@ -24,28 +25,32 @@ def evaluate(output: object, *, n: int = 26) -> EvalResult:
 
     Returns
     -------
-    EvalResult
+    dict
         ``score`` = minimum pairwise distance (higher is better).
         ``valid`` = True iff all centres are in [0,1]^2 and count == n.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``min_pairwise_distance``).
     """
     try:
         centres = np.asarray(output, dtype=float)
     except Exception as exc:
-        return EvalResult(score=0.0, valid=False, error=f"Cannot convert output to array: {exc}")
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
 
     if centres.ndim != 2 or centres.shape != (n, 2):
-        return EvalResult(
-            score=0.0,
-            valid=False,
-            error=f"Expected shape ({n}, 2), got {centres.shape}",
-        )
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"Expected shape ({n}, 2), got {centres.shape}",
+            "metrics": {},
+        }
 
     if np.any(centres < 0.0) or np.any(centres > 1.0):
-        return EvalResult(
-            score=0.0,
-            valid=False,
-            error="All centres must be in [0, 1]^2",
-        )
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": "All centres must be in [0, 1]^2",
+            "metrics": {},
+        }
 
     # Compute all pairwise distances
     diff = centres[:, None, :] - centres[None, :, :]  # (n, n, 2)
@@ -55,8 +60,9 @@ def evaluate(output: object, *, n: int = 26) -> EvalResult:
     np.fill_diagonal(dist, np.inf)
     min_dist = float(dist.min())
 
-    return EvalResult(
-        score=min_dist,
-        valid=True,
-        metrics={"min_pairwise_distance": min_dist},
-    )
+    return {
+        "score": min_dist,
+        "valid": True,
+        "error": "",
+        "metrics": {"min_pairwise_distance": min_dist},
+    }

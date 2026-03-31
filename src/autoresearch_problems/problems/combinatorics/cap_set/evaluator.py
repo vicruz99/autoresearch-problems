@@ -6,16 +6,17 @@ i.e. no x, y, z (not necessarily distinct) such that x + y + z ≡ 0 (mod q).
 The evaluator receives the candidate set as a 2-D integer array of shape
 (k, n) where each row is a vector in F_q^n, and returns the set size k as
 the score if no arithmetic progression is present, else 0.
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from autoresearch_problems.core.result import EvalResult
 
-
-def evaluate(output: object, *, n: int = 8, q: int = 3) -> EvalResult:
+def evaluate(output: object, n: int = 8, q: int = 3, **kwargs) -> dict:
     """Score a candidate cap set.
 
     Parameters
@@ -30,39 +31,43 @@ def evaluate(output: object, *, n: int = 8, q: int = 3) -> EvalResult:
 
     Returns
     -------
-    EvalResult
+    dict
         ``score`` = size of the set if valid, else 0.
         ``valid`` = True iff the set contains no arithmetic progression.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``set_size``).
     """
     try:
         S = np.asarray(output, dtype=int)
     except Exception as exc:
-        return EvalResult(score=0.0, valid=False, error=f"Cannot convert output to array: {exc}")
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
 
     if S.ndim != 2 or S.shape[1] != n:
-        return EvalResult(
-            score=0.0,
-            valid=False,
-            error=f"Expected shape (k, {n}), got {S.shape}",
-        )
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"Expected shape (k, {n}), got {S.shape}",
+            "metrics": {},
+        }
 
     if S.size == 0:
-        return EvalResult(score=0.0, valid=True)
+        return {"score": 0.0, "valid": True, "error": "", "metrics": {"set_size": 0}}
 
     if np.any((S < 0) | (S >= q)):
-        return EvalResult(
-            score=0.0,
-            valid=False,
-            error=f"All entries must be in {{0, …, {q - 1}}}",
-        )
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"All entries must be in {{0, …, {q - 1}}}",
+            "metrics": {},
+        }
 
     k = S.shape[0]
 
     # Check for duplicate rows
     if len({tuple(row) for row in S}) < k:
-        return EvalResult(score=0.0, valid=False, error="Duplicate vectors in the set")
+        return {"score": 0.0, "valid": False, "error": "Duplicate vectors in the set", "metrics": {}}
 
-    # Check every triple (i, j, k) with i < j < k for arithmetic progressions.
+    # Check every triple (i, j, k) with i < j for arithmetic progressions.
     # x + y + z ≡ 0 (mod q) iff z ≡ -(x+y) (mod q).
     # We build a lookup set for fast membership testing.
     row_set = {tuple(row) for row in S}
@@ -73,10 +78,11 @@ def evaluate(output: object, *, n: int = 8, q: int = 3) -> EvalResult:
             # S[i] + S[j] + z ≡ 0 => z ≡ -(S[i] + S[j]) (mod q)
             z = tuple(int(-(S[i, d] + S[j, d])) % q for d in range(n))
             if z in row_set and z != tuple(S[i]) and z != tuple(S[j]):
-                return EvalResult(
-                    score=0.0,
-                    valid=False,
-                    error=f"Arithmetic progression found: {S[i]}, {S[j]}, {np.array(z)}",
-                )
+                return {
+                    "score": 0.0,
+                    "valid": False,
+                    "error": f"Arithmetic progression found: {S[i]}, {S[j]}, {np.array(z)}",
+                    "metrics": {},
+                }
 
-    return EvalResult(score=float(k), valid=True, metrics={"set_size": k})
+    return {"score": float(k), "valid": True, "error": "", "metrics": {"set_size": k}}

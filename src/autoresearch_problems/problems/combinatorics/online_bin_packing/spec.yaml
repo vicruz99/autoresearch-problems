@@ -6,7 +6,6 @@ description: >
   is to minimise the total number of bins used.  The score is the negative
   number of bins (so higher = fewer bins = better).
 
-function_name: solve
 output_type: callable
 
 evaluator_entrypoint: evaluate

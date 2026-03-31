@@ -81,7 +81,6 @@ class Registry:
             name=raw["name"],
             category=raw["category"],
             description=raw.get("description", ""),
-            function_name=raw.get("function_name", "solve"),
             output_type=raw.get("output_type", "any"),
             evaluator_code=evaluator_code,
             evaluator_entrypoint=raw.get("evaluator_entrypoint", "evaluate"),

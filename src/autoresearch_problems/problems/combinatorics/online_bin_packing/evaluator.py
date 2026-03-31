@@ -1,30 +1,28 @@
 """Evaluator for the Online Bin Packing problem.
 
-The candidate provides a *heuristic function* ``solve(item_size, bins)``
-that receives the current item size and a list of remaining capacities of
-open bins, and returns the index of the bin to place the item in (or -1 to
-open a new bin).
+The candidate provides a *heuristic function* that receives the current item
+size and a list of remaining capacities of open bins, and returns the index
+of the bin to place the item in (or -1 to open a new bin).
 
 The evaluator simulates the online process on a random instance and returns
 the negative number of bins used (so that maximising the score is equivalent
 to minimising the number of bins).
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
 """
 
 from __future__ import annotations
 
-from typing import Callable
-
 import numpy as np
-
-from autoresearch_problems.core.result import EvalResult
 
 
 def evaluate(
-    output: Callable[[float, list[float]], int],
-    *,
+    output: object,
     num_items: int = 100,
     seed: int = 42,
-) -> EvalResult:
+    **kwargs,
+) -> dict:
     """Score a candidate online bin-packing heuristic.
 
     Parameters
@@ -41,16 +39,19 @@ def evaluate(
 
     Returns
     -------
-    EvalResult
+    dict
         ``score`` = ``-num_bins_used`` (higher is better; fewer bins is better).
         ``valid`` = True iff the heuristic successfully packed all items.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``num_bins``, ``num_items``).
     """
     if not callable(output):
-        return EvalResult(
-            score=0.0,
-            valid=False,
-            error="output must be a callable with signature (item_size, bins) -> int",
-        )
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": "output must be a callable with signature (item_size, bins) -> int",
+            "metrics": {},
+        }
 
     rng = np.random.default_rng(seed)
     items = rng.uniform(0.0, 1.0, size=num_items).tolist()
@@ -61,11 +62,12 @@ def evaluate(
     try:
         for item_size in items:
             if item_size > BIN_CAPACITY:
-                return EvalResult(
-                    score=0.0,
-                    valid=False,
-                    error=f"Item size {item_size} exceeds bin capacity {BIN_CAPACITY}",
-                )
+                return {
+                    "score": 0.0,
+                    "valid": False,
+                    "error": f"Item size {item_size} exceeds bin capacity {BIN_CAPACITY}",
+                    "metrics": {},
+                }
 
             idx = output(item_size, list(bins))
 
@@ -76,33 +78,37 @@ def evaluate(
                     try:
                         idx = int(idx)
                     except (TypeError, ValueError):
-                        return EvalResult(
-                            score=0.0,
-                            valid=False,
-                            error=f"Heuristic returned non-integer index: {idx!r}",
-                        )
+                        return {
+                            "score": 0.0,
+                            "valid": False,
+                            "error": f"Heuristic returned non-integer index: {idx!r}",
+                            "metrics": {},
+                        }
                 if idx < 0 or idx >= len(bins):
-                    return EvalResult(
-                        score=0.0,
-                        valid=False,
-                        error=f"Bin index {idx} out of range (num_bins={len(bins)})",
-                    )
+                    return {
+                        "score": 0.0,
+                        "valid": False,
+                        "error": f"Bin index {idx} out of range (num_bins={len(bins)})",
+                        "metrics": {},
+                    }
                 if bins[idx] < item_size:
-                    return EvalResult(
-                        score=0.0,
-                        valid=False,
-                        error=(
+                    return {
+                        "score": 0.0,
+                        "valid": False,
+                        "error": (
                             f"Item of size {item_size:.4f} does not fit in bin {idx} "
                             f"with remaining capacity {bins[idx]:.4f}"
                         ),
-                    )
+                        "metrics": {},
+                    }
                 bins[idx] -= item_size
     except Exception as exc:
-        return EvalResult(score=0.0, valid=False, error=str(exc))
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
 
     num_bins = len(bins)
-    return EvalResult(
-        score=float(-num_bins),
-        valid=True,
-        metrics={"num_bins": num_bins, "num_items": num_items},
-    )
+    return {
+        "score": float(-num_bins),
+        "valid": True,
+        "error": "",
+        "metrics": {"num_bins": num_bins, "num_items": num_items},
+    }
