@@ -1,0 +1,36 @@
+name: finite_field_nikodym_problem
+category: combinatorics
+description: >
+  Find a minimum-size Nikodym set N ⊆ F_q^2 where q = p^2 for a given prime p.
+  A set N is a Nikodym set if for every point x in F_q^2 there exists a
+  direction v ∈ F_q^2 \ {0} such that the punctured line
+      { x + t·v : t ∈ F_q, t ≠ 0 }
+  is entirely contained in N.  The objective is to MAXIMISE the complement
+  size  |F_q^2| − |N| (i.e., exclude as many points as possible while N
+  remains a valid Nikodym set).
+  Score = |F_q^2| − |N|.  Higher is better.
+  AlphaEvolve achieved a complement of ~24 000 for p=29.
+
+output_type: numpy_array
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 5
+  d: 2
+
+timeout_seconds: 120.0
+maximize: true
+known_best_score: 50.0   # simple Unital-minus-BlockingSet construction for p=5
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - combinatorics
+  - number_theory
+  - finite-fields
+  - nikodym-sets
+  - alphaevolve
+  - open-problem

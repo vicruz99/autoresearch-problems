@@ -1,0 +1,29 @@
+name: equidistant_points_in_convex_polygons
+category: geometry
+description: >
+  Find a convex polygon with num_vertex vertices where every vertex v has at
+  least 4 other vertices approximately equidistant from v. This would be a
+  counterexample to the conjecture that every convex polygon has at least one
+  vertex with no 4 equidistant neighbours. Score is the minimum across all
+  vertices of a [0,1] equidistance quality measure; 1.0 = perfect counterexample.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  num_vertex: 10
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - geometry
+  - convex-polygon
+  - equidistant
+  - alphaevolve
+  - open-problem

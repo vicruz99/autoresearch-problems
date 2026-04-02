@@ -1,0 +1,30 @@
+name: hausdorff_young_inequality
+category: analysis
+description: >
+  Find a function f (represented as values on a fixed grid) that maximises the
+  Hausdorff-Young quotient Q(f) = ||f_hat||_{L^q} / ||f||_{L^p} where p=1.5
+  and q = p/(p-1) = 3. The optimal function (a Gaussian) achieves the sharp
+  Babenko-Beckner constant ≈ 0.9532.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 1.5
+  r1: 5.0
+  j: 500
+  r2: 10.0
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 0.9532
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - analysis
+  - inequalities
+  - fourier-analysis
+  - alphaevolve

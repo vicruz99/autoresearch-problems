@@ -1,0 +1,32 @@
+name: kakeya_needle_3d
+category: geometry
+description: >
+  Three-dimensional Kakeya needle problem. For cap_n = N, find positions
+  (x_rand, y_rand) — each an array of N^2 floats — such that the union of N^2
+  generalized tubes in [0,1]^3 has minimum volume. Tube (i,j) connects a
+  1/N × 1/N square at z=0 with base (x[i*N+j], y[i*N+j]) to a 1/N × 1/N
+  square at z=1 offset by (i/N, j/N). Score = -(volume / reference_volume)
+  where reference is the volume for random uniform positions; higher is better.
+
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  cap_n: 4
+  num_samples: 200000
+
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - geometry
+  - kakeya
+  - optimization
+  - alphaevolve
+  - open-problem
+  - 3d

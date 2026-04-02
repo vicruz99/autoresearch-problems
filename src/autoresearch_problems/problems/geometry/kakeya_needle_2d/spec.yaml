@@ -1,0 +1,31 @@
+name: kakeya_needle_2d
+category: geometry
+description: >
+  Two-dimensional Kakeya needle problem. Find positions x = (x_1, ..., x_n)
+  such that the union of n triangles R_i (with vertices (x_i, 0),
+  (x_i + 1/n, 0), (x_i + i/n, 1) for i=1..n) has minimum area.
+  This is a discretized version of the Kakeya needle problem.
+  Score = -(area / reference_area) where reference is the Keich construction
+  area for the same n; higher (less negative) is better.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "shapely>=2.0"
+
+parameters:
+  n: 32
+
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - geometry
+  - kakeya
+  - optimization
+  - alphaevolve
+  - open-problem

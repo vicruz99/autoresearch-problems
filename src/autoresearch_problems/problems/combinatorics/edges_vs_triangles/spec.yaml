@@ -1,0 +1,29 @@
+name: edges_vs_triangles
+category: combinatorics
+description: >
+  Find a set of probability vectors (each of length 20) that densely traces the
+  theoretical boundary of the achievable (edge_density, triangle_density) region
+  for graphs. Score = (5/6) / (area + 10 * max_gap) where area is the area
+  under the capped slope-3 density curve and max_gap is the largest gap between
+  consecutive edge densities. A score of 1.0 corresponds to the theoretical
+  minimum area = 5/6 with zero gap.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 20
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - combinatorics
+  - graph-theory
+  - extremal-combinatorics
+  - alphaevolve

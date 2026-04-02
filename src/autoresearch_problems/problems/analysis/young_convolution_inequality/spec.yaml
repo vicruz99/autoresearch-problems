@@ -1,0 +1,30 @@
+name: young_convolution_inequality
+category: analysis
+description: >
+  Find two functions f and g (each as values on a fixed grid) that maximise the
+  Young's convolution quotient Q(f,g) = ||f*g||_{L^r} / (||f||_{L^p} *
+  ||g||_{L^q}) with p=4/3, q=7/5 and 1/r = 1/p + 1/q - 1. The optimal
+  functions are Gaussians.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 1.3333333333333333
+  q: 1.4
+  r1: 10.0
+  j: 500
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - analysis
+  - inequalities
+  - convolution
+  - alphaevolve

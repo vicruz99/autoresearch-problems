@@ -1,0 +1,32 @@
+name: finite_field_kakeya
+category: number_theory
+description: >
+  Find a minimum-size Kakeya set in F_p^d (the d-dimensional vector space over
+  the finite field of prime order p). A Kakeya set K must contain a complete
+  line in every direction: for every non-zero v in F_p^d there exists x in K
+  such that {x + t*v mod p : t in F_p} is a subset of K. Minimise |K|.
+  Score = -(|K| / |reference|) where reference is the Saraf-Sudan construction
+  size; higher (less negative or closer to -1) is better.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 3
+  d: 3
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null  # Best known constructions beat the Saraf-Sudan reference; exact optimum is open
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - number_theory
+  - finite-fields
+  - kakeya
+  - combinatorics
+  - alphaevolve
+  - open-problem

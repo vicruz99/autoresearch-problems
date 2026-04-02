@@ -1,0 +1,32 @@
+name: flat_polynomials
+category: analysis
+description: >
+  Find n coefficients c_i ∈ {+1, −1} for the polynomial
+  g(z) = c_1·z + c_2·z^2 + … + c_n·z^n that minimises the L∞ norm on the
+  unit circle, scaled by √(n+1):
+      score = max_{|z|=1} |g(z)| / √(n+1).
+  This is related to Golay's conjecture on "flat" (low-crest-factor)
+  polynomials. Lower score is better. AlphaEvolve achieved ~1.384 for n=64.
+
+output_type: numpy_array
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 64
+
+timeout_seconds: 120.0
+maximize: false
+known_best_score: 1.3842203538985842
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - analysis
+  - polynomials
+  - flat-polynomials
+  - golay-conjecture
+  - alphaevolve
+  - combinatorial-optimisation

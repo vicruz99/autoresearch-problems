@@ -1,0 +1,32 @@
+name: finite_field_sum_product_problem
+category: number_theory
+description: >
+  Construct a set X ⊆ F_p of size ⌊√p⌋ that minimises max(|X+X|, |X·X|),
+  challenging the sum-product conjecture over finite fields.
+  Here X+X = {x+y mod p : x,y ∈ X} and X·X = {x·y mod p : x,y ∈ X}.
+  Score = max(|X+X|, |X·X|).  Lower is better.
+  An arithmetic progression gives |X+X| = 2k−1 but large |X·X|.
+  AlphaEvolve found constructions achieving max ≈ k^1.5 using AP ∩ GP.
+
+output_type: numpy_array
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 1009       # prime ≡ 1 mod 4, floor(sqrt(1009))=31
+
+timeout_seconds: 120.0
+maximize: false
+known_best_score: 120.0   # AlphaEvolve achieved ~k^1.4 ≈ 31^1.4 ≈ 120 for p=1009; AP∩GP baseline gives ~k^1.5 ≈ 172
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - number_theory
+  - finite-fields
+  - sum-product
+  - additive-combinatorics
+  - alphaevolve
+  - open-problem
