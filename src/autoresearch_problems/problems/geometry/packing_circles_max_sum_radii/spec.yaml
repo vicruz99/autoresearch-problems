@@ -1,0 +1,21 @@
+name: packing_circles_max_sum_radii
+category: geometry
+description: >
+  Pack n=26 non-overlapping circles inside the unit square [0,1]^2 to
+  maximize the sum of radii. Circles may have different radii.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  n: 26
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - packing
+  - circles
+  - optimization

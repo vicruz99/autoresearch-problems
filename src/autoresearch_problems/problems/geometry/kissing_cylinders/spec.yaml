@@ -1,0 +1,23 @@
+name: kissing_cylinders
+category: geometry
+description: >
+  Find 7 unit-radius infinite cylinders that all touch a central cylinder
+  aligned with the Z-axis. Score = -sum of (axis_distance - 2)^2 for the
+  7 outer cylinders, so maximizing score means all cylinders are tangent to
+  the central one (axis-to-axis distance = 2 = sum of unit radii).
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  n_cylinders: 7
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 0.0
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - cylinders
+  - kissing
+  - packing

@@ -1,0 +1,22 @@
+name: ring_loading_problem
+category: combinatorics
+description: >
+  Find m=15 pairs (u_i, v_i) with u_i+v_i <= 1 to maximize alpha, the
+  minimum over all sign choices z_i in {v_i, -u_i} of the maximum
+  imbalance max_k |sum(z_1..z_k) - sum(z_{k+1}..z_m)|.
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  m: 15
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - combinatorics
+  - ring
+  - loading
+  - optimization

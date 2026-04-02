@@ -1,0 +1,22 @@
+name: thomson_n32
+category: geometry
+description: >
+  Place 32 points on the unit sphere to minimize the Thomson energy
+  (sum of 1/r_ij over all pairs i<j). Score = negative energy so that
+  maximizing score corresponds to minimizing energy.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  n: 32
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - sphere
+  - thomson
+  - electrostatics
