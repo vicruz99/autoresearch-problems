@@ -1,0 +1,29 @@
+name: erdos_szekeres_happy_ending
+category: combinatorics
+description: >
+  Find a configuration of exactly 2^(n-2)+1 points in the plane in general
+  position (no 3 collinear) that minimises the number of convex n-gons among
+  them. The Erdos-Szekeres theorem guarantees at least one convex n-gon exists.
+  Score = -(number of convex n-gons); higher (less negative) is better.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 6
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null  # Score 0 (zero n-gons) is impossible by the theorem; best constructions score near 0
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - combinatorics
+  - geometry
+  - convex-polygon
+  - erdos-szekeres
+  - alphaevolve
+  - open-problem
