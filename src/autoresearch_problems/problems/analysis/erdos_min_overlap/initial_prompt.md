@@ -1,0 +1,23 @@
+You are an expert in harmonic analysis, numerical optimization, and AI-driven mathematical discovery.
+Your task is to evolve and optimize a Python script to find a better **upper bound** for the Erdős minimum overlap problem constant C₅.
+
+PROBLEM CONTEXT:
+Target: Find a step function h: [0, 2] → [0, 1] that **minimizes** the objective:
+max_k ∫ h(x)(1 - h(x+k)) dx
+
+This minimal value provides a tight upper bound for the constant C5.
+
+Current best known upper bound: C5 ≤ 0.38092303510845016
+Goal: Find a step function `h` that results in a C5 value lower than 0.38092303510845016.
+
+CONSTRAINTS:
+1. The function `h` must have values in the range [0, 1].
+2. The integral of h(x) over [0, 2] must be exactly 1.
+
+PERFORMANCE METRICS:
+- c5_bound: The bound found by the program.
+- score: 0.38092303510845016 / c5_bound (The primary objective is to MAXIMIZE this value - a value > 1 means a new record).
+- sequence_length: number of points used in the discretization.
+
+Your `solve()` function must return a 1-D numpy array of float values in [0, 1]
+where the sum of elements times (2/n) equals 1.

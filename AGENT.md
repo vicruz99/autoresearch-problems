@@ -64,6 +64,8 @@ notebooks/
 | `known_best_score` | `float \| None` | Known optimum (if any) |
 | `initial_prompt` | `str \| None` | Suggested LLM prompt |
 | `initial_program` | `str \| None` | Seed solution code |
+| `initial_programs` | `dict[str, str]` | Named program variants (stem → code); falls back to `{"default": initial_program}` if no `initial_programs/` dir |
+| `initial_prompts` | `dict[str, str]` | Named prompt variants (stem → text); falls back to `{"default": initial_prompt}` if no `initial_prompts/` dir |
 | `function_name` | `str \| None` | Suggested function name (e.g. `"solve"`) |
 | `source` | `str` | Provenance URL or paper reference |
 | `tags` | `list[str]` | Searchable tags |
@@ -91,6 +93,10 @@ Every problem lives in its own directory: `src/autoresearch_problems/problems/<c
 
 3. **`initial_prompt.md`** — suggested LLM prompt for frameworks.
 4. **`initial_program.py`** — seed solution defining a zero-argument function (usually `solve()`).
+5. **`initial_programs/`** — directory of named program variants (e.g. `alpha_evolve.py`, `open_evolve.py`).
+   Each file defines a `solve()` function. The registry exposes these as `spec.initial_programs` dict.
+6. **`initial_prompts/`** — directory of named prompt variants (e.g. `alpha_evolve.md`, `open_evolve.md`).
+   The registry exposes these as `spec.initial_prompts` dict.
 
 ### Evaluator contract
 
@@ -116,6 +122,8 @@ def evaluate(output: Any, **kwargs) -> dict:
 - [ ] Add `spec.yaml` with all required fields
 - [ ] Add `evaluator.py` — standalone, no `autoresearch_problems` imports
 - [ ] (Optional) Add `initial_prompt.md` and `initial_program.py` and `function_name`
+- [ ] (Optional) Add `initial_programs/` with named `.py` variants (e.g. `alpha_evolve.py`)
+- [ ] (Optional) Add `initial_prompts/` with named `.md` variants (e.g. `alpha_evolve.md`)
 - [ ] Add tests in `tests/test_evaluators.py` covering: valid output, invalid output, edge cases
 - [ ] Verify `registry.list_problems()` discovers the new problem
 - [ ] Update the Problem Catalog table in `README.md`

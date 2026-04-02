@@ -1,0 +1,28 @@
+name: second_autocorr_ineq
+category: analysis
+description: >
+  Find a non-negative sequence of step-function heights that maximizes the
+  second autocorrelation inequality lower bound C₂, defined as:
+  R(f) = ‖f*f‖₂² / (‖f*f‖₁ · ‖f*f‖∞)
+  The score is c2 / BENCHMARK (higher means closer to or beating the known
+  lower bound). BENCHMARK = 0.8962799441554083 (found by AlphaEvolve).
+
+output_type: list
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters: {}
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/SakanaAI/ShinkaEvolve"
+tags:
+  - analysis
+  - autocorrelation
+  - step-function
+  - alphaevolve

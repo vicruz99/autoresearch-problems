@@ -37,6 +37,13 @@ class ProblemSpec:
     initial_program: str | None = None
     function_name: str | None = None   # suggested function name (e.g. "solve")
 
+    # ── Multi-variant support ─────────────────────────────────────────────────
+    # Maps variant name → code/prompt string.  If only a single
+    # initial_program.py / initial_prompt.md exists it is exposed under
+    # {"default": <content>} for backward compatibility.
+    initial_programs: dict[str, str] = field(default_factory=dict)
+    initial_prompts: dict[str, str] = field(default_factory=dict)
+
     # ── Provenance ────────────────────────────────────────────────────────────
     source: str = ""
     tags: list[str] = field(default_factory=list)

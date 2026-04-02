@@ -75,6 +75,24 @@ class Registry:
         if program_path.exists():
             initial_program = program_path.read_text()
 
+        # ── Multi-variant programs ────────────────────────────────────────────
+        initial_programs: dict[str, str] = {}
+        programs_dir = problem_dir / "initial_programs"
+        if programs_dir.is_dir():
+            for py_file in sorted(programs_dir.glob("*.py")):
+                initial_programs[py_file.stem] = py_file.read_text()
+        if not initial_programs and initial_program is not None:
+            initial_programs = {"default": initial_program}
+
+        # ── Multi-variant prompts ─────────────────────────────────────────────
+        initial_prompts: dict[str, str] = {}
+        prompts_dir = problem_dir / "initial_prompts"
+        if prompts_dir.is_dir():
+            for md_file in sorted(prompts_dir.glob("*.md")):
+                initial_prompts[md_file.stem] = md_file.read_text()
+        if not initial_prompts and initial_prompt is not None:
+            initial_prompts = {"default": initial_prompt}
+
         return ProblemSpec(
             name=raw["name"],
             category=raw["category"],
@@ -89,6 +107,8 @@ class Registry:
             known_best_score=raw.get("known_best_score"),
             initial_prompt=initial_prompt,
             initial_program=initial_program,
+            initial_programs=initial_programs,
+            initial_prompts=initial_prompts,
             function_name=raw.get("function_name"),
             source=raw.get("source", ""),
             tags=raw.get("tags", []),

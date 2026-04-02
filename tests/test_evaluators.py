@@ -124,3 +124,280 @@ def test_bin_packing_bad_index(bin_packing_spec):
 
     result = run_evaluation(bin_packing_spec, bad_heuristic)
     assert not result.valid
+
+
+# ── Erdős Minimum Overlap ─────────────────────────────────────────────────────
+
+@pytest.fixture
+def erdos_spec():
+    return registry.load("analysis/erdos_min_overlap")
+
+
+def test_erdos_valid_uniform(erdos_spec):
+    """Uniform h = 0.5 over n=100 points satisfies the integral constraint."""
+    n = 100
+    h = np.full(n, 0.5)  # sum * (2/n) = 0.5 * 2 = 1.0
+    result = run_evaluation(erdos_spec, h)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_erdos_invalid_out_of_range(erdos_spec):
+    """Values outside [0, 1] must be rejected."""
+    n = 50
+    h = np.full(n, 2.0)
+    result = run_evaluation(erdos_spec, h)
+    assert not result.valid
+
+
+def test_erdos_invalid_integral(erdos_spec):
+    """Integral != 1 must be rejected."""
+    n = 100
+    h = np.full(n, 0.9)  # integral = 0.9 * 2 ≠ 1
+    result = run_evaluation(erdos_spec, h)
+    assert not result.valid
+
+
+def test_erdos_invalid_empty(erdos_spec):
+    result = run_evaluation(erdos_spec, [])
+    assert not result.valid
+
+
+def test_erdos_invalid_wrong_type(erdos_spec):
+    result = run_evaluation(erdos_spec, "not an array")
+    assert not result.valid
+
+
+def test_erdos_multi_variants(erdos_spec):
+    """initial_programs and initial_prompts dicts should be populated."""
+    assert "open_evolve" in erdos_spec.initial_programs
+    assert "test_time" in erdos_spec.initial_programs
+    assert "open_evolve" in erdos_spec.initial_prompts
+
+
+# ── First Autocorrelation Inequality ─────────────────────────────────────────
+
+@pytest.fixture
+def first_autocorr_spec():
+    return registry.load("analysis/first_autocorr_ineq")
+
+
+def test_first_autocorr_valid(first_autocorr_spec):
+    """A uniform sequence should be valid."""
+    seq = [1.0] * 100
+    result = run_evaluation(first_autocorr_spec, seq)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_first_autocorr_numpy_input(first_autocorr_spec):
+    """numpy array input should also work."""
+    seq = np.ones(50)
+    result = run_evaluation(first_autocorr_spec, seq)
+    assert result.valid
+
+
+def test_first_autocorr_invalid_empty(first_autocorr_spec):
+    result = run_evaluation(first_autocorr_spec, [])
+    assert not result.valid
+
+
+def test_first_autocorr_invalid_nan(first_autocorr_spec):
+    seq = [1.0, float("nan"), 1.0]
+    result = run_evaluation(first_autocorr_spec, seq)
+    assert not result.valid
+
+
+def test_first_autocorr_invalid_zero_sum(first_autocorr_spec):
+    """Sum too close to zero should be rejected."""
+    seq = [0.0] * 10
+    result = run_evaluation(first_autocorr_spec, seq)
+    assert not result.valid
+
+
+def test_first_autocorr_multi_variants(first_autocorr_spec):
+    assert "alpha_evolve" in first_autocorr_spec.initial_programs
+    assert "open_evolve" in first_autocorr_spec.initial_programs
+    assert "test_time_discover" in first_autocorr_spec.initial_programs
+    assert "alpha_evolve" in first_autocorr_spec.initial_prompts
+    assert "open_evolve" in first_autocorr_spec.initial_prompts
+
+
+# ── Second Autocorrelation Inequality ────────────────────────────────────────
+
+@pytest.fixture
+def second_autocorr_spec():
+    return registry.load("analysis/second_autocorr_ineq")
+
+
+def test_second_autocorr_valid(second_autocorr_spec):
+    """A uniform positive sequence should be valid."""
+    seq = [1.0] * 100
+    result = run_evaluation(second_autocorr_spec, seq)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_second_autocorr_numpy_input(second_autocorr_spec):
+    seq = np.ones(50) * 2.0
+    result = run_evaluation(second_autocorr_spec, seq)
+    assert result.valid
+
+
+def test_second_autocorr_invalid_empty(second_autocorr_spec):
+    result = run_evaluation(second_autocorr_spec, [])
+    assert not result.valid
+
+
+def test_second_autocorr_invalid_inf(second_autocorr_spec):
+    seq = [1.0, float("inf"), 1.0]
+    result = run_evaluation(second_autocorr_spec, seq)
+    assert not result.valid
+
+
+def test_second_autocorr_invalid_wrong_type(second_autocorr_spec):
+    result = run_evaluation(second_autocorr_spec, 42)
+    assert not result.valid
+
+
+def test_second_autocorr_multi_variants(second_autocorr_spec):
+    assert "alpha_evolve" in second_autocorr_spec.initial_programs
+    assert "code_evolve" in second_autocorr_spec.initial_programs
+    assert "open_evolve" in second_autocorr_spec.initial_programs
+    assert "theta_evolve" in second_autocorr_spec.initial_programs
+    assert "alpha_evolve" in second_autocorr_spec.initial_prompts
+    assert "code_evolve" in second_autocorr_spec.initial_prompts
+    assert "theta_evolve" in second_autocorr_spec.initial_prompts
+
+
+# ── Third Autocorrelation Inequality ─────────────────────────────────────────
+
+@pytest.fixture
+def third_autocorr_spec():
+    return registry.load("analysis/third_autocorr_ineq")
+
+
+def test_third_autocorr_valid(third_autocorr_spec):
+    """A uniform positive sequence should be valid."""
+    seq = [1.0] * 100
+    result = run_evaluation(third_autocorr_spec, seq)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_third_autocorr_valid_with_negatives(third_autocorr_spec):
+    """Sequences with negative values are allowed as long as sum != 0."""
+    seq = [1.0, -0.5, 2.0, -0.3] * 25
+    result = run_evaluation(third_autocorr_spec, seq)
+    assert result.valid
+
+
+def test_third_autocorr_invalid_zero_sum(third_autocorr_spec):
+    """Sum equal to zero should be rejected."""
+    seq = [1.0, -1.0] * 5
+    result = run_evaluation(third_autocorr_spec, seq)
+    assert not result.valid
+
+
+def test_third_autocorr_invalid_empty(third_autocorr_spec):
+    result = run_evaluation(third_autocorr_spec, [])
+    assert not result.valid
+
+
+def test_third_autocorr_invalid_nan(third_autocorr_spec):
+    seq = [1.0, float("nan"), 1.0]
+    result = run_evaluation(third_autocorr_spec, seq)
+    assert not result.valid
+
+
+def test_third_autocorr_multi_variants(third_autocorr_spec):
+    assert "alpha_evolve" in third_autocorr_spec.initial_programs
+    assert "code_evolve" in third_autocorr_spec.initial_programs
+    assert "open_evolve" in third_autocorr_spec.initial_programs
+    assert "theta_evolve" in third_autocorr_spec.initial_programs
+    assert "alpha_evolve" in third_autocorr_spec.initial_prompts
+    assert "code_evolve" in third_autocorr_spec.initial_prompts
+    assert "open_evolve" in third_autocorr_spec.initial_prompts
+    assert "theta_evolve" in third_autocorr_spec.initial_prompts
+
+
+# ── Minimizing Max/Min Distance 2D ───────────────────────────────────────────
+
+@pytest.fixture
+def min_max_dist_2d_spec():
+    return registry.load("geometry/minimizing_max_min_dist_2d")
+
+
+def test_min_max_dist_2d_valid(min_max_dist_2d_spec):
+    """16 distinct points should be valid."""
+    np.random.seed(42)
+    pts = np.random.randn(16, 2)
+    result = run_evaluation(min_max_dist_2d_spec, pts)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_min_max_dist_2d_wrong_count(min_max_dist_2d_spec):
+    result = run_evaluation(min_max_dist_2d_spec, np.random.rand(10, 2))
+    assert not result.valid
+
+
+def test_min_max_dist_2d_wrong_dim(min_max_dist_2d_spec):
+    result = run_evaluation(min_max_dist_2d_spec, np.random.rand(16, 3))
+    assert not result.valid
+
+
+def test_min_max_dist_2d_nan(min_max_dist_2d_spec):
+    pts = np.random.randn(16, 2)
+    pts[0, 0] = float("nan")
+    result = run_evaluation(min_max_dist_2d_spec, pts)
+    assert not result.valid
+
+
+def test_min_max_dist_2d_all_same(min_max_dist_2d_spec):
+    """All points at the same location → max_dist = 0, score = 0."""
+    pts = np.zeros((16, 2))
+    result = run_evaluation(min_max_dist_2d_spec, pts)
+    assert result.valid
+    assert result.score == 0.0
+
+
+# ── Minimizing Max/Min Distance 3D ───────────────────────────────────────────
+
+@pytest.fixture
+def min_max_dist_3d_spec():
+    return registry.load("geometry/minimizing_max_min_dist_3d")
+
+
+def test_min_max_dist_3d_valid(min_max_dist_3d_spec):
+    """14 distinct points should be valid."""
+    np.random.seed(42)
+    pts = np.random.randn(14, 3)
+    result = run_evaluation(min_max_dist_3d_spec, pts)
+    assert result.valid
+    assert result.score > 0.0
+
+
+def test_min_max_dist_3d_wrong_count(min_max_dist_3d_spec):
+    result = run_evaluation(min_max_dist_3d_spec, np.random.rand(16, 3))
+    assert not result.valid
+
+
+def test_min_max_dist_3d_wrong_dim(min_max_dist_3d_spec):
+    result = run_evaluation(min_max_dist_3d_spec, np.random.rand(14, 2))
+    assert not result.valid
+
+
+def test_min_max_dist_3d_nan(min_max_dist_3d_spec):
+    pts = np.random.randn(14, 3)
+    pts[0, 0] = float("nan")
+    result = run_evaluation(min_max_dist_3d_spec, pts)
+    assert not result.valid
+
+
+def test_min_max_dist_3d_all_same(min_max_dist_3d_spec):
+    """All points at the same location → max_dist = 0, score = 0."""
+    pts = np.zeros((14, 3))
+    result = run_evaluation(min_max_dist_3d_spec, pts)
+    assert result.valid
+    assert result.score == 0.0
