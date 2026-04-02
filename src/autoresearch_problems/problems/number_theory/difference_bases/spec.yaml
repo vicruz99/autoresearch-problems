@@ -1,0 +1,26 @@
+name: difference_bases
+category: number_theory
+description: >
+  Find a small set B of non-negative integers (a difference basis) such that
+  every positive integer up to k can be expressed as a difference b_i - b_j
+  for some b_i, b_j in B. The score is k / n² where n = |B| and k is the
+  maximum consecutively covered integer. Maximise this ratio (equivalent to
+  minimising δ[k]² = n²/k). The theoretical bound gives k/n² ≤ 0.5
+  asymptotically.
+
+output_type: list[int]
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 0.5
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - number_theory
+  - combinatorics
+  - difference-sets
+  - alphaevolve

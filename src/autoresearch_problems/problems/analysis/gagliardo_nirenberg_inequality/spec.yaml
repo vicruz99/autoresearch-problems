@@ -1,0 +1,29 @@
+name: gagliardo_nirenberg_inequality
+category: analysis
+description: >
+  Find a function f (represented as values on a fixed grid) that maximises the
+  Gagliardo-Nirenberg quotient Q(f) = ||f||_p^{4p} / (||f||_2^{2(p+2)} *
+  ||f'||_2^{2(p-2)}) with p=4. The known optimal is f = sech(x) = 1/cosh(x),
+  which achieves Q = 1/9 ≈ 0.1111.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  p: 4.0
+  r1: 15.0
+  j: 500
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 0.1111
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - analysis
+  - inequalities
+  - sobolev
+  - alphaevolve
