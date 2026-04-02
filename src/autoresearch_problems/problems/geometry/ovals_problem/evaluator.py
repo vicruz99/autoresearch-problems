@@ -60,8 +60,10 @@ def evaluate(output: object, n: int = 100, **kwargs) -> dict:
                     "error": "Curve is not convex (signed curvature is negative)", "metrics": {}}
 
         def kappa(t):
-            xp = float(x_prime(t)); yp = float(y_prime(t))
-            xpp = float(x_double_prime(t)); ypp = float(y_double_prime(t))
+            xp = float(x_prime(t))
+            yp = float(y_prime(t))
+            xpp = float(x_double_prime(t))
+            ypp = float(y_double_prime(t))
             spd = np.sqrt(xp ** 2 + yp ** 2)
             return abs(xp * ypp - xpp * yp) / spd ** 3
 

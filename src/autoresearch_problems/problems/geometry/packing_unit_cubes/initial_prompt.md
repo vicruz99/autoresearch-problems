@@ -29,7 +29,7 @@ def solve() -> np.ndarray:
 
 ## Tips
 
-- 11 axis-aligned unit cubes require a bounding box of at least `⌈11^(1/3)⌉ = 3` side length.
+- 11 axis-aligned unit cubes arranged in a grid pattern require a bounding box with the smallest side of at least 3 (e.g. a 2×2×3 arrangement).
 - Rotating cubes by 45° can reduce bounding box in some configurations.
 - The theoretical minimum for 11 cubes is approximately 2.73 (with rotations).
 - Start with a 3×4 or 4×3 grid and then optimize rotations.
