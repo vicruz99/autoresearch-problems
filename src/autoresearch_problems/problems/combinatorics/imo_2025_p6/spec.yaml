@@ -1,0 +1,30 @@
+name: imo_2025_p6
+category: combinatorics
+description: >
+  IMO 2025 Problem 6: Grid tiling problem. Given an n×n grid, place
+  non-overlapping rectangular tiles (sides aligned with the grid) such that
+  every row and every column has exactly one uncovered unit square.
+  Minimize the number of tiles used.
+  Score = -(num_tiles / reference_tiles) where reference = n*(n-1)/2;
+  higher (less negative) is better. Score -1.0 means matching the reference.
+
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  n: 10
+
+timeout_seconds: 30.0
+maximize: true
+known_best_score: null
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - combinatorics
+  - tiling
+  - optimization
+  - alphaevolve
+  - imo
