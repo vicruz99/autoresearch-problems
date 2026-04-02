@@ -16,7 +16,7 @@ parameters:
   t: 7
 timeout_seconds: 60.0
 maximize: true
-known_best_score: 0.0
+known_best_score: null
 source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
 tags:
   - geometry

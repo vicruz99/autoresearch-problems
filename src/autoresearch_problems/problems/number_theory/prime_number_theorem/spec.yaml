@@ -17,6 +17,6 @@ known_best_score: null
 source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
 tags:
   - number_theory
-  - prime
+  - primes
   - optimization
   - analytic_number_theory
