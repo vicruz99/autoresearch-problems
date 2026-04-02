@@ -34,11 +34,11 @@ def evaluate(output: object, n: int = 100, **kwargs) -> dict:
         y_fn = _make_periodic_spline(y, n)
         phi_fn = _make_periodic_spline(phi, n)
 
-        dx1 = x_fn.derivative(1)
-        dx2 = y_fn.derivative(1)
+        x_prime = x_fn.derivative(1)
+        y_prime = y_fn.derivative(1)
 
         ts = np.linspace(0, 2 * np.pi, 10000, endpoint=False)
-        speed = np.sqrt(dx1(ts) ** 2 + dx2(ts) ** 2)
+        speed = np.sqrt(x_prime(ts) ** 2 + y_prime(ts) ** 2)
         if np.min(speed) < 1e-4:
             return {"score": 0.0, "valid": False,
                     "error": "Curve speed is degenerate (near zero)", "metrics": {}}
@@ -49,24 +49,24 @@ def evaluate(output: object, n: int = 100, **kwargs) -> dict:
             return {"score": 0.0, "valid": False,
                     "error": "phi is degenerate (near zero L2 norm)", "metrics": {}}
 
-        d2x1 = x_fn.derivative(2)
-        d2x2 = y_fn.derivative(2)
-        d1phi = phi_fn.derivative(1)
+        x_double_prime = x_fn.derivative(2)
+        y_double_prime = y_fn.derivative(2)
+        phi_prime = phi_fn.derivative(1)
 
         # Check convexity: signed curvature must be positive everywhere
-        signed_kappa_vals = dx1(ts) * d2x2(ts) - d2x1(ts) * dx2(ts)
+        signed_kappa_vals = x_prime(ts) * y_double_prime(ts) - x_double_prime(ts) * y_prime(ts)
         if np.any(signed_kappa_vals < -1e-6):
             return {"score": 0.0, "valid": False,
                     "error": "Curve is not convex (signed curvature is negative)", "metrics": {}}
 
         def kappa(t):
-            d1 = float(dx1(t)); d2 = float(dx2(t))
-            dd1 = float(d2x1(t)); dd2 = float(d2x2(t))
-            spd = np.sqrt(d1 ** 2 + d2 ** 2)
-            return abs(d1 * dd2 - dd1 * d2) / spd ** 3
+            xp = float(x_prime(t)); yp = float(y_prime(t))
+            xpp = float(x_double_prime(t)); ypp = float(y_double_prime(t))
+            spd = np.sqrt(xp ** 2 + yp ** 2)
+            return abs(xp * ypp - xpp * yp) / spd ** 3
 
         numerator, _ = scipy.integrate.quad(
-            lambda t: float(d1phi(t)) ** 2 + (kappa(t) * float(phi_fn(t))) ** 2,
+            lambda t: float(phi_prime(t)) ** 2 + (kappa(t) * float(phi_fn(t))) ** 2,
             0, 2 * np.pi, limit=500)
 
         rayleigh = numerator / phi_l2

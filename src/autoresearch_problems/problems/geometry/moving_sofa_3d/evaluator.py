@@ -17,7 +17,7 @@ def _in_corridor(pts):
     The corridor has:
     - Entry arm: x <= 0, y in [0, W], z in [0, W]  (extends in negative x)
     - Middle arm: x in [0, W], y in [0, W+L], z in [0, W]
-    - Exit arm: x in [0, W], y >= W+L, z in [0, W+?]  (extends in positive y)
+    - Exit arm: x in [0, W], y in [W+L, W+L+W], z >= 0  (extends in +z direction)
     """
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
     w = CORRIDOR_WIDTH
