@@ -1,0 +1,28 @@
+name: erdos_min_overlap
+category: analysis
+description: >
+  Find a step function h: [0, 2] → [0, 1] that minimizes the Erdős minimum
+  overlap constant C₅ = max_k ∫ h(x)(1-h(x+k)) dx, subject to ∫h(x)dx = 1
+  and 0 ≤ h ≤ 1. The score is BENCHMARK / c5_bound (higher means closer to or
+  beating the known upper bound).
+
+output_type: numpy_array
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters: {}
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/SakanaAI/ShinkaEvolve"
+tags:
+  - analysis
+  - autocorrelation
+  - step-function
+  - erdos
+  - alphaevolve

@@ -55,6 +55,12 @@ print(result.score, result.valid)
 | `combinatorics/cap_set` | Combinatorics | Largest subset of F_3^n with no three-term arithmetic progression |
 | `combinatorics/online_bin_packing` | Combinatorics | Online bin-packing heuristic (minimise bins used) |
 | `geometry/circle_packing` | Geometry | Pack n circles in a unit square (maximise min pairwise distance) |
+| `geometry/minimizing_max_min_dist_2d` | Geometry | Place 16 points in 2D to maximise ratio of min to max pairwise distance |
+| `geometry/minimizing_max_min_dist_3d` | Geometry | Place 14 points in 3D to maximise ratio of min to max pairwise distance |
+| `analysis/erdos_min_overlap` | Analysis | Minimise the Erdős minimum overlap constant C₅ via step function h: [0,2]→[0,1] |
+| `analysis/first_autocorr_ineq` | Analysis | Minimise the first autocorrelation inequality constant C₁ |
+| `analysis/second_autocorr_ineq` | Analysis | Maximise the second autocorrelation inequality lower bound C₂ |
+| `analysis/third_autocorr_ineq` | Analysis | Minimise the third autocorrelation inequality constant C₃ |
 
 ## Optional: Running Untrusted Code
 

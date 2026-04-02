@@ -1,0 +1,28 @@
+name: third_autocorr_ineq
+category: analysis
+description: >
+  Find a sequence of heights representing a step function on [-1/4, 1/4] that
+  minimizes the third autocorrelation inequality constant C₃, defined as:
+  C₃ = 2·n·max(|f*f|) / (∑f)²
+  The score is BENCHMARK / c3 (higher means closer to or beating the known
+  upper bound). BENCHMARK = 1.4556427953745406 (found by AlphaEvolve).
+
+output_type: list
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters: {}
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/SakanaAI/ShinkaEvolve"
+tags:
+  - analysis
+  - autocorrelation
+  - step-function
+  - alphaevolve

@@ -1,0 +1,30 @@
+name: minimizing_max_min_dist_3d
+category: geometry
+description: >
+  Place exactly 14 points in 3D space to maximize the ratio of minimum to
+  maximum pairwise distance: dmin/dmax. The score is (dmin/dmax)² / BENCHMARK
+  where BENCHMARK = 1/4.165849767 (found by AlphaEvolve). A score > 1 means
+  a new record.
+
+output_type: numpy_array
+
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.10"
+
+parameters:
+  n: 14
+  d: 3
+
+timeout_seconds: 60.0
+maximize: true
+known_best_score: 1.0
+
+source: "https://github.com/SakanaAI/ShinkaEvolve"
+tags:
+  - geometry
+  - point-dispersion
+  - alphaevolve
+  - continuous-optimisation
