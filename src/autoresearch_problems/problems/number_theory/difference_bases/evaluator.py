@@ -42,11 +42,16 @@ def evaluate(output, **kwargs) -> dict:
                         "error": f"Non-finite element: {x}", "metrics": {}}
             raw.append(val)
 
-        b_list = sorted(set(raw))
+        b_set = set(raw)
 
-        if not b_list:
+        if not b_set:
             return {"score": 0.0, "valid": False,
                     "error": "Empty set", "metrics": {}}
+
+        # Ensure 0 is in the set (matches notebook Cell 1 which adds 0)
+        b_set.add(0)
+
+        b_list = sorted(b_set)
 
         if min(b_list) < 0:
             return {"score": 0.0, "valid": False,
