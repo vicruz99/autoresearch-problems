@@ -1,0 +1,20 @@
+name: sums_differences
+category: combinatorics
+description: >
+  Find a set A of distinct integers to maximize log|A-A| / log|A+A|
+  (Ruzsa's inequality ratio). The ratio measures how much larger the
+  difference set is compared to the sumset.
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies: []
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - combinatorics
+  - ruzsa
+  - sumset
+  - number_theory
+  - additive_combinatorics

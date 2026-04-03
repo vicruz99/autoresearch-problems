@@ -1,0 +1,24 @@
+name: moving_sofa_2d
+category: geometry
+description: >
+  Find the path of poses (translations + rotations) for moving a 2D sofa
+  around an L-shaped corridor of unit width. The sofa shape is determined
+  by the intersection of the corridor at all poses along the path.
+  Score = approximate area of the sofa (computed by point sampling).
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  n_poses: 20
+  n_grid: 50
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - moving_sofa
+  - optimization
+  - corridor

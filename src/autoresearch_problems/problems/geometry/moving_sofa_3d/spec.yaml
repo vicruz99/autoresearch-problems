@@ -1,0 +1,26 @@
+name: moving_sofa_3d
+category: geometry
+description: >
+  Find the path of 3D poses (translation + rotation) for moving a 3D solid
+  through an L-shaped corridor of unit width. The solid shape is determined
+  by the intersection of the corridor at all poses. Score = approximate
+  volume of the solid (computed by point sampling).
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.7"
+parameters:
+  n_poses: 20
+  n_grid: 20
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - moving_sofa
+  - 3d
+  - optimization
+  - corridor

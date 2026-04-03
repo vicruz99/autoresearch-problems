@@ -1,0 +1,22 @@
+name: prime_number_theorem
+category: number_theory
+description: >
+  Find a partial function f: Z+ -> R (dict mapping positive integers to reals)
+  that maximizes a_value = -sum(f(k)*log(k)/k), subject to the constraint
+  that for all x >= 1, sum(f(k)*floor(x/k)) <= 1.
+output_type: dict
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  num_samples: 100000
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - number_theory
+  - primes
+  - optimization
+  - analytic_number_theory

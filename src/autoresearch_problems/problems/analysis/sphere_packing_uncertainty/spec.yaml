@@ -1,0 +1,24 @@
+name: sphere_packing_uncertainty
+category: analysis
+description: >
+  Find m=10 positive real roots z_1,...,z_m for a linear combination of
+  generalized Laguerre polynomials g(x) (with dimension n_dim=25) such that
+  g has double zeros at each z_i. Maximize the largest sign change of g.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.7"
+parameters:
+  m: 10
+  n_dim: 25
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - analysis
+  - sphere_packing
+  - laguerre
+  - uncertainty_principle

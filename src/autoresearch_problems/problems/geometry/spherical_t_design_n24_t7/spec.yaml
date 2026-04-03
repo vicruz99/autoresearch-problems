@@ -1,0 +1,26 @@
+name: spherical_t_design_n24_t7
+category: geometry
+description: >
+  Construct a spherical 7-design with n=24 points on the unit sphere in R^3:
+  a set of points such that the average of any polynomial of degree <= 7 over
+  the points equals its average over the sphere. Score = -max_error across
+  all Gegenbauer polynomials up to degree t=7.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.7"
+parameters:
+  n: 24
+  t: 7
+timeout_seconds: 60.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - sphere
+  - t-design
+  - gegenbauer
+  - cubature

@@ -1,0 +1,22 @@
+name: no_5_on_sphere
+category: geometry
+description: >
+  Place as many points as possible on the unit sphere such that no 5 points
+  lie on any common great circle (i.e., no 5 points are coplanar with the
+  origin). Score = number of valid points placed.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+parameters:
+  n: 50
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - sphere
+  - combinatorics
+  - extremal

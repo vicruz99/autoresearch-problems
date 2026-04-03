@@ -1,0 +1,21 @@
+name: no_isosceles_triangles
+category: combinatorics
+description: >
+  Find the largest subset of the n=64 x n=64 integer grid such that no
+  three points form an isosceles triangle (no ordered triple (a,b,c) with
+  dist(a,b) = dist(b,c)). Score = num_points / n.
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies: []
+parameters:
+  n: 64
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - combinatorics
+  - isosceles
+  - grid
+  - extremal

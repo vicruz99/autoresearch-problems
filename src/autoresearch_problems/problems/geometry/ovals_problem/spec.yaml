@@ -1,0 +1,25 @@
+name: ovals_problem
+category: geometry
+description: >
+  Find a convex closed planar curve (parametrized by arc-length angle) and a
+  function phi on it to minimize the Rayleigh quotient
+  R = integral(phi'^2 + kappa^2 * phi^2) / integral(phi^2),
+  where kappa is the curvature. Score = -R (maximize to minimize R).
+output_type: list
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.7"
+parameters:
+  n: 100
+timeout_seconds: 120.0
+maximize: true
+known_best_score: null
+source: "Google DeepMind / AlphaEvolve (Apache 2.0)"
+tags:
+  - geometry
+  - ovals
+  - rayleigh
+  - optimization
+  - convex
