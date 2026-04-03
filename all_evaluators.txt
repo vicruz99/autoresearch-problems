@@ -1,0 +1,4220 @@
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/erdos_min_overlap/evaluator.py ===
+"""Evaluator for the Erdős minimum overlap problem.
+
+The candidate program's solve() function should return a step function
+h: [0, 2] → [0, 1] represented as a numpy array (or list) of n values,
+where each value h[i] corresponds to the interval [2i/n, 2(i+1)/n).
+
+Constraints:
+  - h values must be in [0, 1]
+  - ∫ h(x) dx = 1  (i.e., sum(h) * dx = 1 where dx = 2/n)
+
+Score: BENCHMARK / c5_bound  (higher is better; > 1 means a new record)
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+BENCHMARK = 0.38092303510845016  # found by AlphaEvolve and AlphaEvolve v2
+
+
+def _compute_c5(sequence: np.ndarray) -> float:
+    """Compute the C5 upper bound for the given step-function heights."""
+    convolution_values = np.correlate(sequence, 1 - sequence, mode="full")
+    return float(np.max(convolution_values) / len(sequence) * 2)
+
+
+def evaluate(output, **kwargs) -> dict:
+    """Score a candidate step function for the Erdős minimum overlap problem.
+
+    Parameters
+    ----------
+    output:
+        A 1-D array-like of floats representing h values in [0, 1], with
+        length n > 0 and sum(output) * (2/n) ≈ 1.
+
+    Returns
+    -------
+    dict
+        score  : BENCHMARK / c5_bound (higher is better)
+        valid  : True iff all constraints are satisfied
+        error  : "" on success, description of first error otherwise
+        metrics: dict with c5_bound, sequence_length
+    """
+    try:
+        if not isinstance(output, (list, np.ndarray)):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected list or np.ndarray, got {type(output).__name__}",
+                "metrics": {},
+            }
+
+        try:
+            seq = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
+
+        if seq.ndim != 1 or len(seq) == 0:
+            return {"score": 0.0, "valid": False, "error": "Sequence must be a non-empty 1-D array", "metrics": {}}
+
+        if not np.isfinite(seq).all():
+            return {"score": 0.0, "valid": False, "error": "Sequence contains NaN or Inf values", "metrics": {}}
+
+        if np.any(seq < 0) or np.any(seq > 1):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"h(x) values must be in [0, 1]; range was [{seq.min():.4g}, {seq.max():.4g}]",
+                "metrics": {},
+            }
+
+        dx = 2.0 / len(seq)
+        integral = float(np.sum(seq) * dx)
+        if not np.isclose(integral, 1.0, atol=1e-4):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Integral of h must be 1.0; got {integral:.6f}",
+                "metrics": {},
+            }
+
+        c5 = _compute_c5(seq)
+        score = BENCHMARK / c5 if c5 > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {"c5_bound": c5, "sequence_length": len(seq)},
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/first_autocorr_ineq/evaluator.py ===
+"""Evaluator for the first autocorrelation inequality (C₁ constant).
+
+The candidate program's solve() function should return a list or numpy array
+of non-negative floats representing a step function on [-1/4, 1/4].
+
+The objective is to MINIMIZE:
+  c1 = 2 * n * max(conv(f, f)) / (sum(f))²
+
+Score: BENCHMARK / c1  (higher is better; > 1 means a new record)
+BENCHMARK = 1.5052939684401607  (found by AlphaEvolve)
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+BENCHMARK = 1.5052939684401607
+
+
+def _compute_c1(sequence: np.ndarray) -> float:
+    """Compute C₁ upper bound for the given sequence."""
+    seq = [float(x) for x in sequence]
+    seq = [max(0.0, x) for x in seq]
+    seq = [min(10_000_000.0, x) for x in seq]
+
+    n = len(seq)
+    b_sequence = np.convolve(seq, seq)
+    max_b = float(np.max(b_sequence))
+    sum_a = float(np.sum(seq))
+
+    if sum_a < 1e-9:
+        return float("inf")
+
+    return float(2 * n * max_b / (sum_a ** 2))
+
+
+def evaluate(output, **kwargs) -> dict:
+    """Score a candidate step function for the first autocorrelation inequality.
+
+    Parameters
+    ----------
+    output:
+        A list or 1-D array-like of non-negative floats.
+
+    Returns
+    -------
+    dict
+        score  : BENCHMARK / c1  (higher is better)
+        valid  : True iff all constraints are satisfied
+        error  : "" on success, description of first error otherwise
+        metrics: dict with c1, sequence_length
+    """
+    try:
+        if not isinstance(output, (list, np.ndarray)):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected list or np.ndarray, got {type(output).__name__}",
+                "metrics": {},
+            }
+
+        if isinstance(output, np.ndarray):
+            sequence = output.tolist()
+        else:
+            sequence = list(output)
+
+        if not sequence:
+            return {"score": 0.0, "valid": False, "error": "Sequence cannot be empty", "metrics": {}}
+
+        for x in sequence:
+            if isinstance(x, bool) or not isinstance(x, (int, float, np.number)):
+                return {"score": 0.0, "valid": False, "error": "Sequence entries must be integers or floats", "metrics": {}}
+            if np.isnan(x) or np.isinf(x):
+                return {"score": 0.0, "valid": False, "error": "Sequence cannot contain NaN or Inf values", "metrics": {}}
+
+        seq_array = np.array([float(x) for x in sequence])
+        seq_array = np.maximum(0.0, seq_array)
+        seq_array = np.minimum(10_000_000.0, seq_array)
+
+        sum_a = float(np.sum(seq_array))
+        if sum_a < 1e-5:
+            return {"score": 0.0, "valid": False, "error": f"Sum of sequence too close to zero: {sum_a}", "metrics": {}}
+
+        c1 = _compute_c1(seq_array)
+        score = BENCHMARK / c1 if c1 > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {"c1": c1, "sequence_length": len(sequence)},
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/first_autocorrelation_inequality/evaluator.py ===
+"""Evaluator for the First Autocorrelation Inequality problem.
+
+For any function f: ℝ → ℝ, define the autoconvolution f*f(t) := ∫ f(t-x)f(x) dx.
+
+Let C₁ denote the largest constant for which:
+    max_{-1/2 ≤ t ≤ 1/2} f*f(t) ≥ C₁ (∫_{-1/4}^{1/4} f(x) dx)²
+
+holds for all non-negative f.  A step function discretized over num_intervals
+equally-spaced intervals on [-1/4, 1/4] is used to construct an upper bound
+on C₁.  Lower C₁ is better (minimize=True).
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
+"""
+
+import numpy as np
+
+
+def evaluate(output: object, num_intervals: int = 600, **kwargs) -> dict:
+    """Score a candidate step function for the first autocorrelation inequality.
+
+    Parameters
+    ----------
+    output:
+        A list of ``num_intervals`` non-negative floats representing the step
+        function values on equally-spaced intervals over [-1/4, 1/4].
+    num_intervals:
+        Expected number of intervals (default 600).
+
+    Returns
+    -------
+    dict
+        ``score``   = C₁ ratio (lower is better); ``float("inf")`` if invalid.
+        ``valid``   = True iff the sequence passes all validation checks.
+        ``error``   = description of the first error found, or empty string.
+        ``metrics`` = dict with ``c1``, ``sequence_length``, ``integral_f``,
+                      and ``max_autoconv`` when valid; empty dict otherwise.
+    """
+    # --- validation ---
+    sequence = output
+    if not isinstance(sequence, list):
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": f"Sequence type expected to be list, received {type(sequence)}",
+            "metrics": {},
+        }
+    if not sequence:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": "Sequence cannot be None or empty.",
+            "metrics": {},
+        }
+    for x in sequence:
+        if isinstance(x, bool) or not isinstance(x, (int, float, np.number)):
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": "Sequence entries must be integers or floats.",
+                "metrics": {},
+            }
+        if np.isnan(x) or np.isinf(x):
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": "Sequence cannot contain nans or infs.",
+                "metrics": {},
+            }
+
+    f_values = np.array(sequence, dtype=np.float64)
+    f_values = np.clip(f_values, 0.0, 1000.0)  # match notebook: max(0, min(1000, x))
+    if np.sum(f_values) < 1e-6:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": "Sequence cannot be all zeros.",
+            "metrics": {},
+        }
+
+    # --- compute C₁ ---
+    n = len(f_values)
+    domain_width = 0.5  # f is supported on [-1/4, 1/4], width = 1/2
+    dx = domain_width / n
+    integral_f = float(np.sum(f_values) * dx)
+    if integral_f < 1e-12:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": "Integral of f is effectively zero.",
+            "metrics": {},
+        }
+
+    autoconv = np.convolve(f_values, f_values) * dx
+    max_autoconv = float(np.max(autoconv))
+    c1 = max_autoconv / (integral_f ** 2)
+
+    return {
+        "score": float(c1),
+        "valid": True,
+        "error": "",
+        "metrics": {
+            "c1": float(c1),
+            "sequence_length": n,
+            "integral_f": integral_f,
+            "max_autoconv": max_autoconv,
+        },
+    }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/flat_polynomials/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the Flat Polynomials / Golay's conjecture problem.
+
+The candidate program's solve() function should return a 1-D array-like of
+length n containing ±1 coefficients  [c_1, c_2, …, c_n]  for the polynomial
+    g(z) = c_1·z + c_2·z² + … + c_n·z^n.
+
+The objective is to MINIMISE
+    score = max_{|z|=1} |g(z)| / √(n+1)
+where the maximum is approximated by sampling 100 000 equally-spaced points
+on the unit circle.
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+_DEFAULT_N = 64
+_NUM_SAMPLE_POINTS = 100_000
+
+
+def _c_plus_score(coefficients: np.ndarray) -> float:
+    """Return max|g(z)| / sqrt(n+1) sampled over the unit circle."""
+    n = len(coefficients)
+    zs = np.exp(1j * np.linspace(0, 2 * np.pi, _NUM_SAMPLE_POINTS, endpoint=False))
+    # g(z) = sum_{k=1}^{n} c_k * z^k  — evaluate via Horner-like numpy poly
+    # np.poly1d expects highest-degree coefficient first; our array is [c_1,...,c_n]
+    # g(z) = z * (c_1 + z*(c_2 + ... + z*c_n)) = np.polyval([c_n,...,c_1,0], z)
+    poly_coeffs = np.concatenate([coefficients[::-1], [0.0]])  # [c_n,...,c_1,0]
+    vals = np.polyval(poly_coeffs, zs)
+    return float(np.max(np.abs(vals))) / np.sqrt(n + 1)
+
+
+def evaluate(output, n: int = _DEFAULT_N, **kwargs) -> dict:
+    """Score a candidate coefficient sequence.
+
+    Parameters
+    ----------
+    output:
+        A 1-D array-like of length *n* with entries in {+1, −1}.
+    n:
+        Expected number of coefficients (from spec parameters).
+
+    Returns
+    -------
+    dict
+        score   : max|g(z)|/√(n+1)  – **lower is better**
+        valid   : True iff the array has the right shape and ±1 entries
+        error   : "" on success, description of first problem otherwise
+        metrics : dict with raw_max_abs, n_used
+    """
+    try:
+        try:
+            coeffs = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"Cannot convert output to array: {exc}",
+                "metrics": {},
+            }
+
+        coeffs = coeffs.ravel()
+
+        if coeffs.shape[0] != n:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"Expected {n} coefficients, got {coeffs.shape[0]}",
+                "metrics": {},
+            }
+
+        if not np.isfinite(coeffs).all():
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": "Coefficients contain NaN or Inf",
+                "metrics": {},
+            }
+
+        # Coefficients must be ±1 (allow a small tolerance for float representations)
+        if not np.allclose(np.abs(coeffs), 1.0, atol=1e-6):
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": "Coefficients must all be +1 or -1",
+                "metrics": {},
+            }
+
+        # Snap to exact ±1
+        coeffs = np.sign(coeffs)
+
+        raw_score = _c_plus_score(coeffs)
+        raw_max_abs = raw_score * np.sqrt(n + 1)
+
+        return {
+            "score": raw_score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "raw_max_abs": raw_max_abs,
+                "n_used": n,
+            },
+        }
+
+    except Exception as exc:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": f"Unexpected error: {exc}",
+            "metrics": {},
+        }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/gagliardo_nirenberg_inequality/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the Gagliardo-Nirenberg inequality problem.
+
+The candidate solve() function returns a 1-D numpy array of shape (2*J+1,)
+representing the values of a function f on the symmetric grid
+    xs = np.linspace(-R1, R1, 2*J+1)
+with R1=15.0, J=500 by default.
+
+The evaluator computes the Gagliardo-Nirenberg quotient:
+    Q(f) = ||f||_p^{4p} / (||f||_2^{2(p+2)} * ||f'||_2^{2(p-2)})
+using the trapezoidal rule for L^p norms and central finite differences for
+the derivative. Higher scores are better.
+
+For p=4, the optimal function is f(x) = 1/cosh(x) = sech(x), which gives
+Q(sech) = 1/9 ≈ 0.1111.
+"""
+
+import numpy as np
+
+
+def evaluate(output, p: float = 4.0, r1: float = 15.0,
+             j: int = 500, **kwargs) -> dict:
+    """Score a candidate function for the Gagliardo-Nirenberg inequality.
+
+    Parameters
+    ----------
+    output:
+        Numpy array of shape (2*j+1,) with function values on the grid
+        xs = np.linspace(-r1, r1, 2*j+1).
+    p, r1, j:
+        Problem parameters (see spec.yaml).
+
+    Returns
+    -------
+    dict with keys: score (float), valid (bool), error (str), metrics (dict).
+    """
+    try:
+        try:
+            f_values = np.asarray(output, dtype=float).ravel()
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        expected_len = 2 * j + 1
+        if f_values.shape != (expected_len,):
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected shape ({expected_len},), got {f_values.shape}",
+                    "metrics": {}}
+
+        if not np.isfinite(f_values).all():
+            return {"score": 0.0, "valid": False,
+                    "error": "f_values contains NaN or Inf", "metrics": {}}
+
+        if np.max(np.abs(f_values)) > 1e5:
+            return {"score": 0.0, "valid": False,
+                    "error": "Function values exceed 1e5 (too large)", "metrics": {}}
+
+        xs = np.linspace(-r1, r1, 2 * j + 1)
+        dx = xs[1] - xs[0]
+
+        # Derivative via central finite differences (numpy gradient)
+        df_values = np.gradient(f_values, dx)
+
+        # L^p norm (trapezoidal rule; np.trapezoid is the np>=2.0 name)
+        _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+        lp_norm = float(_trapz(np.abs(f_values) ** p, xs) ** (1.0 / p))
+
+        # L^2 norms of f and f'
+        l2_norm_f = float(_trapz(f_values ** 2, xs) ** 0.5)
+        l2_norm_df = float(_trapz(df_values ** 2, xs) ** 0.5)
+
+        if l2_norm_f < 1e-8:
+            return {"score": 0.0, "valid": True,
+                    "error": "Function is essentially zero",
+                    "metrics": {"lp_norm": lp_norm, "l2_norm_f": 0.0,
+                                "l2_norm_df": float(l2_norm_df)}}
+
+        if l2_norm_df < 1e-8:
+            return {"score": 0.0, "valid": True,
+                    "error": "Derivative is essentially zero (constant function)",
+                    "metrics": {"lp_norm": lp_norm, "l2_norm_f": float(l2_norm_f),
+                                "l2_norm_df": 0.0}}
+
+        # Q(f) = ||f||_p^{4p} / (||f||_2^{2(p+2)} * ||f'||_2^{2(p-2)})
+        numerator = lp_norm ** (4.0 * p)
+        denominator = (l2_norm_f ** (2.0 * (p + 2.0))) * (l2_norm_df ** (2.0 * (p - 2.0)))
+
+        if denominator == 0.0:
+            return {"score": 0.0, "valid": False,
+                    "error": "Denominator is zero", "metrics": {}}
+
+        score = float(numerator / denominator)
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "lp_norm": float(lp_norm),
+                "l2_norm_f": float(l2_norm_f),
+                "l2_norm_df": float(l2_norm_df),
+                "score": score,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/hausdorff_young_inequality/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the Hausdorff-Young inequality problem.
+
+The candidate solve() function returns a 1-D numpy array of shape (2*J,)
+representing the values of a function f on the grid
+    xs = np.linspace(-R1, (J-1)*R1/J, 2*J)
+with R1=5.0, J=500 by default.
+
+The evaluator:
+  1. Computes the L^p norm of f via the piecewise-constant approximation.
+  2. Computes the Fourier transform f_hat of the piecewise-constant
+     approximation analytically.
+  3. Computes the L^q norm of f_hat via composite Gauss-Legendre quadrature.
+  4. Returns score = ||f_hat||_{L^q} / ||f||_{L^p}.
+
+The sharp Babenko-Beckner constant for p=3/2 is ≈ 0.9532, achieved by
+Gaussians.  Higher scores are better.
+"""
+
+import numpy as np
+from numpy.polynomial.legendre import leggauss
+
+
+def _lq_norm_gauss_legendre(f_hat_fn, r2: float, q: float,
+                             n_intervals: int = 100, order: int = 5) -> float:
+    """Estimate ||f_hat||_{L^q([-r2,r2])} via composite Gauss-Legendre."""
+    nodes, weights = leggauss(order)
+    grid = np.linspace(-r2, r2, n_intervals + 1)
+    diffs = np.diff(grid)  # (n_intervals,)
+
+    # Sample points: shape (n_intervals, order)
+    midpoints = 0.5 * (grid[:-1] + grid[1:])
+    sample_pts = midpoints[:, np.newaxis] + 0.5 * diffs[:, np.newaxis] * nodes
+    quad_weights = 0.5 * diffs[:, np.newaxis] * weights  # (n_intervals, order)
+
+    xi_flat = sample_pts.ravel()
+    vals = np.abs(f_hat_fn(xi_flat)) ** q
+    vals = vals.reshape(sample_pts.shape)
+
+    integral = float(np.sum(vals * quad_weights))
+    return float(integral ** (1.0 / q))
+
+
+def evaluate(output, p: float = 1.5, r1: float = 5.0,
+             j: int = 500, r2: float = 10.0, **kwargs) -> dict:
+    """Score a candidate function for the Hausdorff-Young inequality.
+
+    Parameters
+    ----------
+    output:
+        Numpy array of shape (2*j,) with function values on the grid
+        xs = np.linspace(-r1, (j-1)*r1/j, 2*j).
+    p, r1, j, r2:
+        Problem parameters (see spec.yaml).
+
+    Returns
+    -------
+    dict with keys: score (float), valid (bool), error (str), metrics (dict).
+    """
+    try:
+        q = p / (p - 1.0)  # conjugate exponent: 1/p + 1/q = 1
+
+        try:
+            f_values = np.asarray(output, dtype=float).ravel()
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        expected_len = 2 * j
+        if f_values.shape != (expected_len,):
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected shape ({expected_len},), got {f_values.shape}",
+                    "metrics": {}}
+
+        if not np.isfinite(f_values).all():
+            return {"score": 0.0, "valid": False,
+                    "error": "f_values contains NaN or Inf", "metrics": {}}
+
+        if np.max(np.abs(f_values)) > 1e2:
+            return {"score": 0.0, "valid": False,
+                    "error": "Function values exceed 100 (too large)", "metrics": {}}
+
+        # Grid: xs[k] = -r1 + k*(r1/j), k=0,...,2j-1
+        # Extended grid for interval boundaries: [xs[0], xs[1], ..., xs[2j-1], r1]
+        extended_xs = np.linspace(-r1, r1, 2 * j + 1)
+
+        # L^p norm of piecewise-constant approximation
+        dx = r1 / j
+        lp_norm = float((np.sum(np.abs(f_values) ** p) * dx) ** (1.0 / p))
+
+        if lp_norm < 1e-15:
+            return {"score": 0.0, "valid": True,
+                    "error": "Function is essentially zero",
+                    "metrics": {"lp_norm": 0.0, "lq_norm": 0.0}}
+
+        # Fourier transform of piecewise-constant approximation
+        def f_hat(xi_array: np.ndarray) -> np.ndarray:
+            xi = np.atleast_1d(np.asarray(xi_array, dtype=float))
+            # Avoid division by zero near xi=0
+            xi_safe = np.where(np.abs(xi) < 1e-12,
+                               np.sign(xi + 1e-15) * 1e-12, xi)
+            # exp_next[i,k] = exp(-2πi·xi[i]·extended_xs[k+1])
+            exp_next = np.exp(-2j * np.pi * np.outer(xi_safe, extended_xs[1:]))
+            exp_curr = np.exp(-2j * np.pi * np.outer(xi_safe, extended_xs[:-1]))
+            # Analytic integral of exp(-2πi·xi·t) over [x_k, x_{k+1}]
+            factor = (exp_next - exp_curr) / (-2j * np.pi * xi_safe[:, np.newaxis])
+            return np.sum(f_values[np.newaxis, :] * factor, axis=1)
+
+        # Sanity check: f_hat should not be too large
+        test_xi = np.linspace(-15.0, 15.0, 50)
+        if np.max(np.abs(f_hat(test_xi))) > 1e2:
+            return {"score": 0.0, "valid": False,
+                    "error": "Fourier transform exceeds 100 (too large)",
+                    "metrics": {}}
+
+        # L^q norm of f_hat over [-r2, r2]
+        lq_norm = _lq_norm_gauss_legendre(f_hat, r2, q)
+
+        ratio = float(lq_norm / lp_norm)
+
+        return {
+            "score": ratio,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "lp_norm": float(lp_norm),
+                "lq_norm": float(lq_norm),
+                "ratio": ratio,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/kissing_number/evaluator.py ===
+"""Evaluator for the Kissing Number problem.
+
+The kissing number K(d) is the maximum number of non-overlapping unit spheres
+that can simultaneously touch a central unit sphere in d-dimensional Euclidean
+space.  Known values: K(1)=2, K(2)=6, K(3)=12, K(4)=24, K(8)=240, K(24)=196560.
+
+Each candidate kissing sphere is represented by its centre vector, which must
+be at distance exactly 2 from the origin (unit radius + unit radius = touching)
+and at distance >= 2 from every other candidate centre (non-overlapping).
+
+We allow a small tolerance (1e-6) for floating-point precision.
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
+"""
+
+import numpy as np
+
+# Tolerance for distance checks
+_TOL = 1e-6
+
+
+def evaluate(output: object, d: int = 3, **kwargs) -> dict:
+    """Score a candidate kissing number configuration.
+
+    Parameters
+    ----------
+    output:
+        A 2-D array-like of shape ``(k, d)`` where each row is the centre of a
+        candidate kissing sphere.  Each centre must be at distance 2 from the
+        origin and at pairwise distance >= 2 from all other centres.
+    d:
+        Dimension of the space.
+
+    Returns
+    -------
+    dict
+        ``score``   = number of valid kissing spheres (higher is better).
+        ``valid``   = True iff all distance constraints are satisfied.
+        ``error``   = description of the first violation found, or "".
+        ``metrics`` = dict with ``num_spheres``, ``min_pairwise_dist``,
+                      ``max_origin_dist_error``.
+    """
+    try:
+        centres = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+    if centres.ndim != 2 or centres.shape[1] != d:
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"Expected shape (k, {d}), got {getattr(centres, 'shape', '?')}",
+            "metrics": {},
+        }
+
+    k = centres.shape[0]
+    if k == 0:
+        return {"score": 0.0, "valid": True, "error": "", "metrics": {"num_spheres": 0}}
+
+    # Check that each centre is at distance 2 from the origin
+    origin_dists = np.sqrt((centres ** 2).sum(axis=1))
+    dist_errors = np.abs(origin_dists - 2.0)
+    max_dist_error = float(dist_errors.max())
+    if max_dist_error > _TOL:
+        worst = int(np.argmax(dist_errors))
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": (
+                f"Centre {worst} is at distance {origin_dists[worst]:.6f} from origin "
+                f"(expected 2.0 ± {_TOL})"
+            ),
+            "metrics": {"max_origin_dist_error": max_dist_error},
+        }
+
+    # Check pairwise distances >= 2 (non-overlapping)
+    if k > 1:
+        diff = centres[:, None, :] - centres[None, :, :]  # (k, k, d)
+        pairwise = np.sqrt((diff ** 2).sum(axis=-1))       # (k, k)
+        np.fill_diagonal(pairwise, np.inf)
+        min_pairwise = float(pairwise.min())
+
+        if min_pairwise < 2.0 - _TOL:
+            idx = np.unravel_index(np.argmin(pairwise), pairwise.shape)
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": (
+                    f"Spheres {idx[0]} and {idx[1]} overlap: "
+                    f"centre distance {min_pairwise:.6f} < 2.0"
+                ),
+                "metrics": {"min_pairwise_dist": min_pairwise},
+            }
+    else:
+        min_pairwise = float("inf")
+
+    return {
+        "score": float(k),
+        "valid": True,
+        "error": "",
+        "metrics": {
+            "num_spheres": k,
+            "min_pairwise_dist": min_pairwise,
+            "max_origin_dist_error": max_dist_error,
+        },
+    }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/second_autocorr_ineq/evaluator.py ===
+"""Evaluator for the second autocorrelation inequality (C₂ constant).
+
+The candidate program's solve() function should return a list or numpy array
+of non-negative floats representing a step function on [-1/4, 1/4].
+
+The objective is to MAXIMIZE:
+  R(f) = ‖f*f‖₂² / (‖f*f‖₁ · ‖f*f‖∞)
+
+Score: c2 / BENCHMARK  (higher is better; > 1 means a new record)
+BENCHMARK = 0.8962799441554083  (found by AlphaEvolve)
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+BENCHMARK = 0.8962799441554083
+MAX_CHECK_VALUE = 1e10
+MIN_CHECK_VALUE = 1e-10
+
+
+def _compute_c2(sequence: np.ndarray) -> float:
+    """Compute C₂ lower bound R(f) for the given sequence."""
+    conv = np.convolve(sequence, sequence, mode="full")
+    num_points = conv.size
+
+    max_conv_abs = float(np.max(np.abs(conv)))
+    if max_conv_abs > MAX_CHECK_VALUE:
+        raise ValueError(f"Convolution values exceed max: {MAX_CHECK_VALUE}")
+
+    # L2 norm squared via piecewise-linear rule with endpoint zeros
+    x_points = np.linspace(-0.5, 0.5, num_points + 2)
+    x_intervals = np.diff(x_points)
+    y_points = np.concatenate(([0.0], conv, [0.0]))
+
+    l2_norm_squared = 0.0
+    for i in range(num_points + 1):
+        y1 = y_points[i]
+        y2 = y_points[i + 1]
+        h = x_intervals[i]
+        l2_norm_squared += (h / 3.0) * (y1 * y1 + y1 * y2 + y2 * y2)
+
+    if not np.isfinite(l2_norm_squared) or l2_norm_squared < MIN_CHECK_VALUE ** 2:
+        raise ValueError("L2 norm squared is non-finite or too small")
+
+    norm_1 = float(np.sum(np.abs(conv))) / float(num_points + 1)
+    norm_inf = float(np.max(np.abs(conv)))
+
+    if norm_1 <= MIN_CHECK_VALUE or norm_inf <= MIN_CHECK_VALUE:
+        raise ValueError("L1 or Linf norm is too small")
+
+    c2 = float(l2_norm_squared) / (norm_1 * norm_inf)
+
+    if not np.isfinite(c2):
+        raise ValueError("C2 is non-finite")
+
+    return c2
+
+
+def evaluate(output, **kwargs) -> dict:
+    """Score a candidate step function for the second autocorrelation inequality.
+
+    Parameters
+    ----------
+    output:
+        A list or 1-D array-like of non-negative floats.
+
+    Returns
+    -------
+    dict
+        score  : c2 / BENCHMARK  (higher is better)
+        valid  : True iff all constraints are satisfied
+        error  : "" on success, description of first error otherwise
+        metrics: dict with c2, sequence_length
+    """
+    try:
+        if not isinstance(output, (list, np.ndarray)):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected list or np.ndarray, got {type(output).__name__}",
+                "metrics": {},
+            }
+
+        try:
+            seq = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
+
+        if seq.ndim != 1 or len(seq) == 0:
+            return {"score": 0.0, "valid": False, "error": "Sequence must be a non-empty 1-D array", "metrics": {}}
+
+        if not np.isfinite(seq).all():
+            return {"score": 0.0, "valid": False, "error": "Sequence contains NaN or Inf values", "metrics": {}}
+
+        if np.any(seq < -MIN_CHECK_VALUE):
+            return {"score": 0.0, "valid": False, "error": f"Sequence cannot contain values below {-MIN_CHECK_VALUE}", "metrics": {}}
+
+        if np.any(seq > MAX_CHECK_VALUE):
+            return {"score": 0.0, "valid": False, "error": f"Sequence cannot contain values above {MAX_CHECK_VALUE}", "metrics": {}}
+
+        seq = np.clip(seq, MIN_CHECK_VALUE, MAX_CHECK_VALUE)
+
+        try:
+            c2 = _compute_c2(seq)
+        except ValueError as exc:
+            return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+        score = c2 / BENCHMARK if BENCHMARK > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {"c2": c2, "sequence_length": len(seq)},
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/sphere_packing_uncertainty/evaluator.py ===
+"""Evaluator for the Sphere Packing Uncertainty Principle problem."""
+import numpy as np
+
+try:
+    from scipy.special import eval_genlaguerre
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+
+def _build_laguerre_combination(m, n_dim, zs):
+    """Build a function g as a combination of Laguerre polynomials with double zeros at zs."""
+    alpha = n_dim / 2.0 - 1.0
+    # Use odd-degree Laguerre polynomials L_{2k+1}^alpha, k=0,1,...
+    num_terms = 2 * m + 2
+    degrees = [2 * k + 1 for k in range(num_terms)]
+
+    # Build constraints: g(0)=0, g'(0)=1, and g(z_i)=0, g'(z_i)=0 for each z_i
+    num_eq = 2 + 2 * m
+    A = np.zeros((num_eq, num_terms))
+    b = np.zeros(num_eq)
+    b[1] = 1.0  # g'(0) = 1
+
+    for j, d in enumerate(degrees):
+        # g(0) = L_d^alpha(0)
+        A[0, j] = eval_genlaguerre(d, alpha, 0.0)
+        # g'(0) = -L_{d-1}^{alpha+1}(0) (derivative formula)
+        A[1, j] = -eval_genlaguerre(d - 1, alpha + 1, 0.0)
+
+    for i, z in enumerate(zs):
+        for j, d in enumerate(degrees):
+            A[2 + 2 * i, j] = eval_genlaguerre(d, alpha, z)
+            A[2 + 2 * i + 1, j] = -eval_genlaguerre(d - 1, alpha + 1, z)
+
+    coeffs, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+
+    def g(x_vals):
+        x_vals = np.asarray(x_vals)
+        result = np.zeros_like(x_vals, dtype=float)
+        for j, d in enumerate(degrees):
+            result += coeffs[j] * eval_genlaguerre(d, alpha, x_vals)
+        return result
+
+    return g
+
+
+def evaluate(output: object, m: int = 10, n_dim: int = 25, **kwargs) -> dict:
+    if not HAS_SCIPY:
+        return {"score": 0.0, "valid": False, "error": "scipy required", "metrics": {}}
+    try:
+        zs = np.asarray(output, dtype=float).flatten()
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if len(zs) != m:
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected {m} roots, got {len(zs)}", "metrics": {}}
+    if np.any(zs <= 0) or np.any(zs > 300):
+        return {"score": 0.0, "valid": False,
+                "error": "Roots must be in (0, 300]", "metrics": {}}
+    if len(zs) != len(np.unique(zs)):
+        return {"score": 0.0, "valid": False, "error": "Roots must be distinct", "metrics": {}}
+
+    try:
+        zs_sorted = np.sort(zs)
+        g = _build_laguerre_combination(m, n_dim, zs_sorted)
+
+        x_vals = np.linspace(0.01, float(zs_sorted[-1]) * 2, 3000)
+        g_vals = g(x_vals)
+
+        # Find sign changes (zeros)
+        sign_diff = np.diff(np.sign(g_vals))
+        sign_change_idx = np.where(sign_diff != 0)[0]
+        if len(sign_change_idx) == 0:
+            return {"score": 0.0, "valid": True, "error": "No sign changes found",
+                    "metrics": {"num_sign_changes": 0}}
+
+        largest_sc = float(x_vals[sign_change_idx[-1] + 1])
+        return {"score": largest_sc, "valid": True, "error": "",
+                "metrics": {"largest_sign_change": largest_sc,
+                             "num_sign_changes": len(sign_change_idx)}}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/third_autocorr_ineq/evaluator.py ===
+"""Evaluator for the third autocorrelation inequality (C₃ constant).
+
+The candidate program's solve() function should return a list or numpy array
+of floats (can be positive or negative) representing a step function on
+[-1/4, 1/4].
+
+The objective is to MINIMIZE:
+  C₃ = 2·n·max(|f*f|) / (∑f)²
+
+Score: BENCHMARK / c3  (higher is better; > 1 means a new record)
+BENCHMARK = 1.4556427953745406  (found by AlphaEvolve)
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+BENCHMARK = 1.4556427953745406
+MAX_CHECK_VALUE = 1e10
+MIN_CHECK_VALUE = 1e-10
+
+
+def _compute_c3(sequence: np.ndarray) -> float:
+    """Compute C₃ upper bound for the given sequence."""
+    conv = np.convolve(sequence, sequence, mode="full")
+
+    max_conv_abs = float(np.max(np.abs(conv)))
+    if max_conv_abs > MAX_CHECK_VALUE:
+        raise ValueError(f"Convolution values exceed max: {MAX_CHECK_VALUE}")
+
+    sum_heights = float(np.sum(sequence))
+    sum_squared = sum_heights ** 2
+
+    c3 = abs(2 * len(sequence) * max_conv_abs / sum_squared)
+
+    if not np.isfinite(c3):
+        raise ValueError("C3 is non-finite")
+
+    return c3
+
+
+def evaluate(output, **kwargs) -> dict:
+    """Score a candidate step function for the third autocorrelation inequality.
+
+    Parameters
+    ----------
+    output:
+        A list or 1-D array-like of floats (can be positive or negative).
+
+    Returns
+    -------
+    dict
+        score  : BENCHMARK / c3  (higher is better)
+        valid  : True iff all constraints are satisfied
+        error  : "" on success, description of first error otherwise
+        metrics: dict with c3, sequence_length
+    """
+    try:
+        if not isinstance(output, (list, np.ndarray)):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected list or np.ndarray, got {type(output).__name__}",
+                "metrics": {},
+            }
+
+        try:
+            seq = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
+
+        if seq.ndim != 1 or len(seq) == 0:
+            return {"score": 0.0, "valid": False, "error": "Sequence must be a non-empty 1-D array", "metrics": {}}
+
+        if not np.isfinite(seq).all():
+            return {"score": 0.0, "valid": False, "error": "Sequence contains NaN or Inf values", "metrics": {}}
+
+        if np.any(np.abs(seq) > MAX_CHECK_VALUE):
+            return {"score": 0.0, "valid": False, "error": f"Sequence contains values above {MAX_CHECK_VALUE}", "metrics": {}}
+
+        total = float(np.sum(seq))
+        if abs(total) < MIN_CHECK_VALUE:
+            return {"score": 0.0, "valid": False, "error": "Sum of heights is zero; invalid for C3 objective", "metrics": {}}
+
+        if total ** 2 < MIN_CHECK_VALUE:
+            return {"score": 0.0, "valid": False, "error": f"Sum squared is too small (< {MIN_CHECK_VALUE}); invalid for C3 objective", "metrics": {}}
+
+        try:
+            c3 = _compute_c3(seq)
+        except ValueError as exc:
+            return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+        score = BENCHMARK / c3 if c3 > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {"c3": c3, "sequence_length": len(seq)},
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/analysis/young_convolution_inequality/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for Young's convolution inequality problem.
+
+The candidate solve() function returns a 2-D numpy array of shape (2, 2*J)
+where row 0 contains values of f and row 1 contains values of g on the grid
+    xs = np.linspace(-R1, (J-1)*R1/J, 2*J)
+with R1=10.0, J=500 by default.
+
+The evaluator computes Young's convolution quotient:
+    Q(f, g) = ||f * g||_{L^r} / (||f||_{L^p} * ||g||_{L^q})
+where p=4/3, q=7/5 and 1/r = 1/p + 1/q - 1 (so r = 28/13 ≈ 2.154).
+
+The L^p norms are computed from the piecewise-constant approximation.
+The convolution uses numpy's 'same' mode with the same grid spacing.
+Higher scores are better; the optimum (Gaussians) achieves a value ≈ 1.
+"""
+
+import numpy as np
+
+
+def evaluate(output, p: float = 4.0 / 3.0, q: float = 1.4,
+             r1: float = 10.0, j: int = 500, **kwargs) -> dict:
+    """Score candidate functions f, g for Young's convolution inequality.
+
+    Parameters
+    ----------
+    output:
+        Numpy array of shape (2, 2*j) where row 0 = f values, row 1 = g values
+        on the grid xs = np.linspace(-r1, (j-1)*r1/j, 2*j).
+    p, q, r1, j:
+        Problem parameters (see spec.yaml).
+
+    Returns
+    -------
+    dict with keys: score (float), valid (bool), error (str), metrics (dict).
+    """
+    try:
+        r = 1.0 / (1.0 / p + 1.0 / q - 1.0)  # r = 28/13 ≈ 2.154
+
+        try:
+            arr = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        expected_shape = (2, 2 * j)
+        if arr.shape != expected_shape:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected shape {expected_shape}, got {arr.shape}",
+                    "metrics": {}}
+
+        if not np.isfinite(arr).all():
+            return {"score": 0.0, "valid": False,
+                    "error": "Array contains NaN or Inf", "metrics": {}}
+
+        if np.max(np.abs(arr)) > 1e3:
+            return {"score": 0.0, "valid": False,
+                    "error": "Values exceed 1e3 (too large)", "metrics": {}}
+
+        f_values = arr[0]
+        g_values = arr[1]
+
+        dx = r1 / j  # grid spacing
+
+        # L^p, L^q norms via piecewise-constant approximation
+        lp_norm = float((np.sum(np.abs(f_values) ** p) * dx) ** (1.0 / p))
+        lq_norm = float((np.sum(np.abs(g_values) ** q) * dx) ** (1.0 / q))
+
+        if lp_norm < 1e-8:
+            return {"score": 0.0, "valid": True,
+                    "error": "f is essentially zero",
+                    "metrics": {"lp_norm": 0.0, "lq_norm": float(lq_norm)}}
+
+        if lq_norm < 1e-8:
+            return {"score": 0.0, "valid": True,
+                    "error": "g is essentially zero",
+                    "metrics": {"lp_norm": float(lp_norm), "lq_norm": 0.0}}
+
+        # Discrete convolution (f * g)(x) ≈ sum_k f(x - x_k) g(x_k) * dx
+        conv = np.convolve(f_values, g_values, mode="same") * dx
+
+        # L^r norm of convolution
+        lr_norm = float((np.sum(np.abs(conv) ** r) * dx) ** (1.0 / r))
+
+        ratio = float(lr_norm / (lp_norm * lq_norm))
+
+        return {
+            "score": ratio,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "lp_norm": float(lp_norm),
+                "lq_norm": float(lq_norm),
+                "lr_norm_conv": float(lr_norm),
+                "ratio": ratio,
+                "r": float(r),
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/cap_set/evaluator.py ===
+"""Evaluator for the Cap Set problem.
+
+A cap set in F_q^n is a subset with no three-term arithmetic progression,
+i.e. no x, y, z (not necessarily distinct) such that x + y + z ≡ 0 (mod q).
+
+The evaluator receives the candidate set as a 2-D integer array of shape
+(k, n) where each row is a vector in F_q^n, and returns the set size k as
+the score if no arithmetic progression is present, else 0.
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
+"""
+
+#from __future__ import annotations
+
+import numpy as np
+
+
+def evaluate(output: object, n: int = 8, q: int = 3, **kwargs) -> dict:
+    """Score a candidate cap set.
+
+    Parameters
+    ----------
+    output:
+        A 2-D array-like of shape ``(k, n)`` with integer entries in
+        ``{0, 1, …, q-1}``.
+    n:
+        Dimension of the vector space.
+    q:
+        Field size (default 3 for GF(3)).
+
+    Returns
+    -------
+    dict
+        ``score`` = size of the set if valid, else 0.
+        ``valid`` = True iff the set contains no arithmetic progression.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``set_size``).
+    """
+    try:
+        S = np.asarray(output, dtype=int)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+    if S.ndim != 2 or S.shape[1] != n:
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"Expected shape (k, {n}), got {S.shape}",
+            "metrics": {},
+        }
+
+    if S.size == 0:
+        return {"score": 0.0, "valid": True, "error": "", "metrics": {"set_size": 0}}
+
+    if np.any((S < 0) | (S >= q)):
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"All entries must be in {{0, …, {q - 1}}}",
+            "metrics": {},
+        }
+
+    k = S.shape[0]
+
+    # Check for duplicate rows
+    if len({tuple(row) for row in S}) < k:
+        return {"score": 0.0, "valid": False, "error": "Duplicate vectors in the set", "metrics": {}}
+
+    # Check every triple (i, j, k) with i < j for arithmetic progressions.
+    # x + y + z ≡ 0 (mod q) iff z ≡ -(x+y) (mod q).
+    # We build a lookup set for fast membership testing.
+    row_set = {tuple(row) for row in S}
+
+    for i in range(k):
+        for j in range(i + 1, k):
+            # The third element needed to form a progression with S[i] and S[j]:
+            # S[i] + S[j] + z ≡ 0 => z ≡ -(S[i] + S[j]) (mod q)
+            z = tuple(int(-(S[i, d] + S[j, d])) % q for d in range(n))
+            if z in row_set and z != tuple(S[i]) and z != tuple(S[j]):
+                return {
+                    "score": 0.0,
+                    "valid": False,
+                    "error": f"Arithmetic progression found: {S[i]}, {S[j]}, {np.array(z)}",
+                    "metrics": {},
+                }
+
+    return {"score": float(k), "valid": True, "error": "", "metrics": {"set_size": k}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/edges_vs_triangles/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the edges-vs-triangles problem.
+
+The candidate solve() function returns a 2-D numpy array of shape (M, N)
+(M ≥ 1 rows, N = 20 columns) where each row is a non-negative vector.
+Rows are normalised to sum to 1 before evaluation.
+
+For each normalised row v the edge density and triangle density are:
+  edge_density      = sum_{i<j}   v_i * v_j
+  triangle_density  = sum_{i<j<k} v_i * v_j * v_k
+
+The evaluator then constructs the piecewise 'capped slope-3' density curve
+and computes:
+  area        = area under the capped-slope-3 boundary function
+  max_gap     = maximum gap between consecutive edge densities
+
+Score = (5/6) / (area + 10 * max_gap).  A score of 1.0 corresponds to the
+theoretical minimum area = 5/6 with zero gap (Kruskal-Katona bound).
+Higher scores are better.
+"""
+
+import numpy as np
+
+# Theoretical minimum area (Kruskal-Katona)
+_BENCHMARK = 5.0 / 6.0
+
+
+def _sum_pairwise_triple(A: np.ndarray):
+    """Compute edge and triangle 'densities' for each row of A.
+
+    Uses the same convention as the AlphaEvolve notebook:
+      pairwise = S1² - S2  (= 2 * sum_{i<j} aᵢaⱼ)
+      triple   = S1³ - 3·S1·S2 + 2·S3  (= 6 * sum_{i<j<k} aᵢaⱼaₖ)
+    where Sk = sum(aᵢᵏ).  For a unit-sum row, pairwise ∈ [0,1) and
+    triple ∈ [0,1).
+    """
+    M, N = A.shape
+    S1 = np.sum(A, axis=1)
+    S2 = np.sum(A ** 2, axis=1)
+    pairwise = S1 ** 2 - S2
+
+    triple = np.zeros(M, dtype=A.dtype)
+    if N >= 3:
+        S3 = np.sum(A ** 3, axis=1)
+        S1_sq = S1 ** 2
+        triple = S1_sq * S1 - 3.0 * S1 * S2 + 2.0 * S3
+
+    return pairwise, triple
+
+
+def _analyze_density_curve(edge_densities: np.ndarray,
+                            triangle_densities: np.ndarray):
+    """Compute area under the capped slope-3 curve and max gap."""
+    eps = 1e-9
+    slope = 3.0
+
+    if edge_densities.size == 0:
+        return 5.0 / 6.0, 1.0
+
+    sort_idx = np.argsort(edge_densities)
+    sx = edge_densities[sort_idx]
+    sy = triangle_densities[sort_idx]
+
+    # Prepend (0,0) and append (1,1)
+    full_x = np.concatenate([[0.0], sx, [1.0]])
+    full_y = np.concatenate([[0.0], sy, [1.0]])
+
+    # Remove duplicate x-values
+    _, unique_idx = np.unique(full_x, return_index=True)
+    full_x = full_x[unique_idx]
+    full_y = full_y[unique_idx]
+
+    total_area = 0.0
+    for i in range(len(full_x) - 1):
+        xi, yi = full_x[i], full_y[i]
+        xn, yn = full_x[i + 1], full_y[i + 1]
+        w = xn - xi
+        if w < eps:
+            continue
+
+        if yi > yn + eps:
+            # Case 1: decreasing → horizontal at yi
+            total_area += yi * w
+        else:
+            y_calc = yi + slope * w
+            if y_calc <= yn + eps:
+                # Case 2a: slope-3 does not overshoot
+                total_area += (yi + y_calc) * w / 2.0
+            else:
+                # Case 2b: slope-3 overshoots → ramp then flat
+                delta_y = max(0.0, yn - yi)
+                w1 = min(delta_y / slope, w)
+                w2 = w - w1
+                total_area += (yi + yn) * w1 / 2.0 + yn * w2
+
+    # Max gap in (0, 1)
+    gaps = np.diff(full_x)
+    in_range = (full_x[:-1] >= 0.0) & (full_x[:-1] < 1.0)
+    max_gap = float(np.max(gaps[in_range])) if np.any(in_range) else 1.0
+
+    return float(total_area), max_gap
+
+
+def evaluate(output, n: int = 20, **kwargs) -> dict:
+    """Score a set of probability vectors for edges-vs-triangles.
+
+    Parameters
+    ----------
+    output:
+        Array-like of shape (M, N) with N = n (default 20).  Each row is a
+        non-negative vector; rows are normalised to sum to 1.
+    n:
+        Expected vector length.
+
+    Returns
+    -------
+    dict with keys: score (float), valid (bool), error (str), metrics (dict).
+    """
+    try:
+        try:
+            solutions = np.array(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        if solutions.ndim != 2:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected 2-D array, got ndim={solutions.ndim}",
+                    "metrics": {}}
+
+        M, N = solutions.shape
+        if N != n:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected {n} columns, got {N}", "metrics": {}}
+
+        if not np.isfinite(solutions).all():
+            return {"score": 0.0, "valid": False,
+                    "error": "Array contains NaN or Inf", "metrics": {}}
+
+        if np.any(solutions < 0):
+            return {"score": 0.0, "valid": False,
+                    "error": "Negative values in probability vectors",
+                    "metrics": {}}
+
+        # Normalise rows to sum to 1; skip zero-sum rows
+        row_sums = solutions.sum(axis=1)
+        valid_mask = row_sums > 1e-7
+        if not np.any(valid_mask):
+            return {"score": 0.0, "valid": False,
+                    "error": "All rows have zero sum", "metrics": {}}
+
+        solutions = solutions[valid_mask]
+        solutions = solutions / solutions.sum(axis=1, keepdims=True)
+
+        edge_densities, triangle_densities = _sum_pairwise_triple(solutions)
+
+        if np.any(np.isnan(edge_densities)) or np.any(np.isnan(triangle_densities)):
+            return {"score": 0.0, "valid": False,
+                    "error": "NaN in computed densities", "metrics": {}}
+
+        area, max_gap = _analyze_density_curve(edge_densities, triangle_densities)
+
+        raw_objective = area + 10.0 * max_gap
+        score = float(_BENCHMARK / raw_objective) if raw_objective > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "area": area,
+                "max_gap": max_gap,
+                "raw_objective": raw_objective,
+                "num_solutions": int(solutions.shape[0]),
+                "score": score,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/erdos_szekeres_happy_ending/evaluator.py ===
+"""Evaluator for the Erdős–Szekeres Happy Ending Problem.
+
+The Erdős–Szekeres theorem states that any set of 2^(n-2)+1 points in general
+position (no three collinear) in the plane must contain a convex n-gon.
+
+The goal is to find a configuration of exactly 2^(n-2)+1 points that minimises
+the total count of convex n-gons among them.  Score = -(total_ngons); higher
+is better (score 0 would be a counterexample to the theorem, which is
+impossible — but scores close to 0 are configurations with very few n-gons).
+
+solve() must return a 2-D float array of shape (2^(n-2)+1, 2).
+
+Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0).
+"""
+
+import math
+
+import numpy as np
+
+_COLLINEARITY_THRESHOLD = 1e-9  # |2*signed_area| below this → collinear
+_PROXIMITY_THRESHOLD = 1e-12    # squared distance below this → overlapping
+
+
+def _count_convex_ngons(points: np.ndarray, n: int) -> int:
+    """Count the number of convex n-gons in *points* using a DP approach.
+
+    The algorithm:
+    - Sort points lexicographically.
+    - For each pivot P[i], sort the remaining points by angle around P[i].
+    - Build a DP table dp[length][j][k] counting convex chains of `length`
+      vertices ending with edges Q[k]→Q[j], starting from pivot.
+    - Close the polygon and accumulate the count.
+
+    Time complexity: O(N^2 * N^(n-2)) which is manageable for small n and N.
+    """
+    pts = sorted(map(tuple, points))
+    num_pts = len(pts)
+    total = 0
+
+    def orient(p, q, r):
+        """Signed orientation: >0 left turn, <0 right turn, 0 collinear."""
+        return (q[0] - p[0]) * (r[1] - q[1]) - (q[1] - p[1]) * (r[0] - q[0])
+
+    for i in range(num_pts):
+        pivot = pts[i]
+        rest = [pts[j] for j in range(i + 1, num_pts)]
+        if len(rest) < n - 1:
+            continue
+
+        rest_sorted = sorted(rest,
+                             key=lambda p: math.atan2(p[1] - pivot[1],
+                                                      p[0] - pivot[0]))
+        M = len(rest_sorted)
+
+        # dp[k][j] = number of convex chains of length k ending at index j
+        # (the "previous" vertex is implicitly tracked via prev arrays)
+        # We use a dict-based DP: dp[length] is a 2D array dp[k, j]
+        # encoding chains. But for counting (not reconstruction) we can use
+        # dp[length][prev_k][j] as in the notebook.
+        dp = np.zeros((n + 1, M, M), dtype=np.int64)
+
+        # Initialise length-3 chains: pivot → Q[k] → Q[j] with left turn
+        for j in range(M):
+            for k in range(j):
+                if orient(pivot, rest_sorted[k], rest_sorted[j]) > 0:
+                    dp[3, k, j] = 1
+
+        # Extend to longer chains
+        for length in range(4, n + 1):
+            for j in range(M):
+                for k in range(j):
+                    if not np.any(dp[length - 1, :k, k]):
+                        continue
+                    for pk in range(k):
+                        if (dp[length - 1, pk, k] > 0 and
+                                orient(rest_sorted[pk],
+                                       rest_sorted[k],
+                                       rest_sorted[j]) > 0):
+                            dp[length, k, j] += dp[length - 1, pk, k]
+
+        # Close the polygon: check the final turn back to pivot
+        for j in range(M):
+            for k in range(j):
+                if (dp[n, k, j] > 0 and
+                        orient(rest_sorted[k], rest_sorted[j], pivot) > 0):
+                    total += dp[n, k, j]
+
+    return total
+
+
+def evaluate(output, n: int = 6, **kwargs) -> dict:
+    """Score a candidate point configuration for the Happy Ending problem.
+
+    Parameters
+    ----------
+    output:
+        Float array of shape (2^(n-2)+1, 2).
+    n:
+        Target convex polygon size (default 6).
+
+    Returns
+    -------
+    dict
+        score   : -(number of convex n-gons); higher is better.
+        valid   : True iff the configuration is well-formed and in general position.
+        error   : description of the first error, or ''.
+        metrics : dict with num_points, num_ngons, etc.
+    """
+    try:
+        required = 2 ** (n - 2) + 1
+        if n < 3:
+            return {"score": 0.0, "valid": False,
+                    "error": "n must be >= 3", "metrics": {}}
+
+        try:
+            pts = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        if pts.ndim != 2 or pts.shape[1] != 2:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected shape ({required}, 2), got {pts.shape}",
+                    "metrics": {}}
+
+        if pts.shape[0] != required:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected {required} points for n={n}, got {pts.shape[0]}",
+                    "metrics": {}}
+
+        if not np.isfinite(pts).all():
+            return {"score": 0.0, "valid": False,
+                    "error": "Array contains NaN or Inf", "metrics": {}}
+
+        num_pts = required
+
+        # Proximity check
+        for i in range(num_pts):
+            for j in range(i + 1, num_pts):
+                dx = pts[i, 0] - pts[j, 0]
+                dy = pts[i, 1] - pts[j, 1]
+                if dx * dx + dy * dy < _PROXIMITY_THRESHOLD:
+                    return {"score": float(-1e15), "valid": False,
+                            "error": f"Points {i} and {j} are too close",
+                            "metrics": {}}
+
+        # Collinearity check (all triples)
+        for i in range(num_pts):
+            for j in range(i + 1, num_pts):
+                for k in range(j + 1, num_pts):
+                    area2 = (pts[i, 0] * (pts[j, 1] - pts[k, 1]) +
+                             pts[j, 0] * (pts[k, 1] - pts[i, 1]) +
+                             pts[k, 0] * (pts[i, 1] - pts[j, 1]))
+                    if abs(area2) < _COLLINEARITY_THRESHOLD:
+                        return {"score": float(-1e15), "valid": False,
+                                "error": (f"Points {i}, {j}, {k} are nearly "
+                                          f"collinear (|2*area|={abs(area2):.2e})"),
+                                "metrics": {}}
+
+        ngon_count = _count_convex_ngons(pts, n)
+        score = float(-ngon_count)
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "num_points": num_pts,
+                "n": n,
+                "num_ngons": ngon_count,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/finite_field_nikodym_problem/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the Finite Field Nikodym Problem in F_q^2, q = p^2.
+
+The candidate's solve() function must return a NumPy integer array of shape
+(k, 2, 2) representing k points in F_q^2.  Each point is encoded as
+
+    [[x_a, x_b], [y_a, y_b]]
+
+where the first coordinate x = x_a + x_b*alpha and second y = y_a + y_b*alpha
+are elements of F_q = F_{p^2}.  Here alpha is a root of x^2 - w over F_p,
+and w is the smallest quadratic non-residue mod p.
+
+The set N must be a valid Nikodym set: for every point x in F_q^2 there must
+exist a non-zero direction v in F_q^2 such that the punctured line
+    { x + t*v : t in F_q, t != 0 }
+is entirely contained in N.
+
+Score = |F_q^2| - |N|.  Higher is better (more points excluded).
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+_DEFAULT_P = 5
+_DEFAULT_D = 2
+
+
+# ---------------------------------------------------------------------------
+# F_q arithmetic (q = p^2, elements represented as pairs (a, b) mod p)
+# ---------------------------------------------------------------------------
+
+def _find_non_square(p: int) -> int:
+    """Return the smallest quadratic non-residue mod p."""
+    for w in range(2, p):
+        if pow(w, (p - 1) // 2, p) == p - 1:
+            return w
+    raise ValueError(f"No non-square found for p={p}")
+
+
+def _build_fq_tables(p: int):
+    """Build addition and multiplication lookup tables for F_q (q=p^2).
+
+    Elements are indexed 0 … q-1: index a*p + b represents a + b·α.
+    Returns (add_table, mul_table, w) where w is the non-square used.
+    """
+    w = _find_non_square(p)
+    q = p * p
+    add_table = np.empty((q, q), dtype=np.int32)
+    mul_table = np.empty((q, q), dtype=np.int32)
+
+    for ai in range(p):
+        for bi in range(p):
+            i = ai * p + bi
+            for aj in range(p):
+                for bj in range(p):
+                    j = aj * p + bj
+                    ra = (ai + aj) % p
+                    rb = (bi + bj) % p
+                    add_table[i, j] = ra * p + rb
+                    # (ai + bi*α)(aj + bj*α) = (ai*aj + bi*bj*w) + (ai*bj + bi*aj)*α
+                    mr = (ai * aj + bi * bj * w) % p
+                    mi = (ai * bj + bi * aj) % p
+                    mul_table[i, j] = mr * p + mi
+
+    return add_table, mul_table, w
+
+
+# Cache tables keyed by p so we don't rebuild per call
+_TABLE_CACHE: dict = {}
+
+
+def _get_tables(p: int):
+    if p not in _TABLE_CACHE:
+        _TABLE_CACHE[p] = _build_fq_tables(p)
+    return _TABLE_CACHE[p]
+
+
+# ---------------------------------------------------------------------------
+# Nikodym validity check
+# ---------------------------------------------------------------------------
+
+def _is_valid_nikodym(construction_set: set, p: int, add_table, mul_table) -> bool:
+    """Return True if construction_set is a valid Nikodym set in F_q^2.
+
+    Uses the canonical direction representatives:
+      - (1, m) for each m in F_q   → q directions
+      - (0, 1)                     → 1 direction
+    Each element of F_q is an index a*p + b.
+    A point in F_q^2 is a tuple (idx1, idx2) of two F_q indices.
+    """
+    q = p * p
+    # Build all non-zero t values (all q-1 elements t ≠ 0)
+    nonzero_ts = [t for t in range(q) if t != 0]
+
+    # idx_one = element 1 in F_q = index 1*p + 0 = p (for p > 1, otherwise 1)
+    # Actually element 1 = (1, 0) = index 1*p + 0 = p ... no
+    # (a, b) means a + b*alpha, so (1, 0) → index 1*p + 0 = p if p=5 then index 5
+    # But (0, 1) → index 0*p + 1 = 1
+    # Wait: index = a*p + b. Element 1 = (a=1, b=0) → index 1*p + 0 = p
+    # Hmm but for p=5 that's index 5. Let me be careful.
+    # Element zero = (0,0) → index 0
+    # Element one = (1,0) → index p
+    idx_zero = 0          # (0, 0)
+    idx_one = 1 * p + 0  # (1, 0)
+
+    for x1 in range(q):
+        for x2 in range(q):
+            found = False
+            # Directions (v1=1, v2=m) for m in F_q
+            for m in range(q):
+                # Check all t ≠ 0 in F_q: is x + t*(1, m) in N?
+                all_in = True
+                for t in nonzero_ts:
+                    # t*(1,0) = (t,0)? No: t*(1,m) = (t*1, t*m) in F_q
+                    # Actually v1=idx_one, v2=m. t*v1 = mul[t, idx_one], t*v2 = mul[t, m]
+                    tv1 = mul_table[t, idx_one]
+                    tv2 = mul_table[t, m]
+                    p1 = add_table[x1, tv1]
+                    p2 = add_table[x2, tv2]
+                    if (p1, p2) not in construction_set:
+                        all_in = False
+                        break
+                if all_in:
+                    found = True
+                    break
+            if found:
+                continue
+            # Direction (v1=0, v2=1)
+            all_in = True
+            for t in nonzero_ts:
+                tv2 = mul_table[t, idx_one]
+                # v1=0 → t*v1=0, v2=idx_one → t*v2 = mul[t, idx_one]
+                p1 = x1  # add 0
+                p2 = add_table[x2, tv2]
+                if (p1, p2) not in construction_set:
+                    all_in = False
+                    break
+            if all_in:
+                found = True
+            if not found:
+                return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Public evaluate interface
+# ---------------------------------------------------------------------------
+
+def evaluate(output, p: int = _DEFAULT_P, d: int = _DEFAULT_D, **kwargs) -> dict:
+    """Score a candidate Nikodym set.
+
+    Parameters
+    ----------
+    output:
+        Integer array of shape (k, 2, 2) with values in {0, …, p-1}.
+        Each row [[xa,xb],[ya,yb]] represents a point in F_{p^2}^2.
+    p:
+        Prime defining F_q with q = p^2.
+    d:
+        Dimension (must be 2).
+
+    Returns
+    -------
+    dict
+        score   : |F_q^2| − |N|  – **higher is better**
+        valid   : True iff N is a valid Nikodym set with correct format
+        error   : "" on success, description of first problem otherwise
+        metrics : dict with nikodym_set_size, complement_size, total_space
+    """
+    try:
+        q = p * p
+        total = q ** d  # = q^2 for d=2
+
+        try:
+            arr = np.asarray(output, dtype=np.int64)
+        except Exception as exc:
+            return {"score": 0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
+
+        if d != 2:
+            return {"score": 0, "valid": False, "error": "Only d=2 is supported", "metrics": {}}
+
+        if arr.ndim != 3 or arr.shape[1] != 2 or arr.shape[2] != 2:
+            return {
+                "score": 0,
+                "valid": False,
+                "error": f"Expected shape (k,2,2), got {arr.shape}",
+                "metrics": {},
+            }
+
+        if arr.size > 0 and (arr.min() < 0 or arr.max() >= p):
+            return {
+                "score": 0,
+                "valid": False,
+                "error": f"Array values must be in {{0, …, {p-1}}}",
+                "metrics": {},
+            }
+
+        # De-duplicate and convert to set of tuples
+        unique_set: set = set()
+        for row in arr:
+            pt = (int(row[0, 0]) * p + int(row[0, 1]),
+                  int(row[1, 0]) * p + int(row[1, 1]))
+            unique_set.add(pt)
+
+        k = len(unique_set)
+
+        add_table, mul_table, _ = _get_tables(p)
+
+        is_valid = _is_valid_nikodym(unique_set, p, add_table, mul_table)
+
+        if not is_valid:
+            return {
+                "score": 0,
+                "valid": False,
+                "error": "Not a valid Nikodym set",
+                "metrics": {"nikodym_set_size": k, "complement_size": 0, "total_space": total},
+            }
+
+        complement = total - k
+        return {
+            "score": complement,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "nikodym_set_size": k,
+                "complement_size": complement,
+                "total_space": total,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/imo_2025_p6/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for IMO 2025 Problem 6: Grid tiling problem.
+
+Place non-overlapping axis-aligned rectangles on an n×n grid so that every row
+and column has exactly one uncovered unit square. Minimize the number of tiles.
+"""
+
+import math
+from typing import Any
+
+import numpy as np
+
+
+def _reference_tile_count(n: int) -> int:
+    """A simple reference: diagonal permutation gives n*(n-1)//2 tiles."""
+    # The diagonal permutation (uncovered square (i,i)) is a valid baseline.
+    # Greedy tiling of the remaining cells gives at most n*(n-1)//2 tiles.
+    return max(1, n * (n - 1) // 2)
+
+
+def _score_tiles(tiles: list, n: int) -> tuple[float, bool, str, dict]:
+    """Core scoring. Returns (score, valid, error, metrics)."""
+    if not isinstance(tiles, list):
+        return 0.0, False, "Output must be a list of tiles", {}
+    if not tiles:
+        penalty = 2 * n * (n - 1)
+        return float(-1000 * penalty), False, "No tiles provided", {}
+
+    for t in tiles:
+        if not (isinstance(t, (list, tuple)) and len(t) == 4):
+            return 0.0, False, f"Each tile must be (r, c, h, w), got {t!r}", {}
+        r, c, h, w = t
+        if not all(isinstance(x, (int, np.integer)) for x in (r, c, h, w)):
+            return 0.0, False, f"Tile values must be integers, got {t!r}", {}
+        if h <= 0 or w <= 0:
+            return 0.0, False, f"Tile dimensions must be positive, got {t!r}", {}
+
+    grid = np.zeros((n, n), dtype=np.int32)
+    for t in tiles:
+        r, c, h, w = int(t[0]), int(t[1]), int(t[2]), int(t[3])
+        if r < 0 or c < 0 or r + h > n or c + w > n:
+            return float(-1e9), False, f"Tile {t} out of bounds for n={n}", {}
+        if np.any(grid[r: r + h, c: c + w]):
+            return float(-1e9), False, f"Tile {t} overlaps another tile", {}
+        grid[r: r + h, c: c + w] = 1
+
+    uncovered_per_row = n - np.sum(grid, axis=1)
+    uncovered_per_col = n - np.sum(grid, axis=0)
+    row_penalty = int(np.sum(np.abs(uncovered_per_row - 1)))
+    col_penalty = int(np.sum(np.abs(uncovered_per_col - 1)))
+    total_penalty = row_penalty + col_penalty
+
+    num_tiles = len(tiles)
+    if total_penalty > 0:
+        raw_score = float(-num_tiles - 100 * total_penalty)
+        return raw_score, False, (
+            f"Constraint violated: row_penalty={row_penalty}, "
+            f"col_penalty={col_penalty}"
+        ), {"num_tiles": num_tiles, "row_penalty": row_penalty,
+             "col_penalty": col_penalty}
+
+    ref = _reference_tile_count(n)
+    score = -float(num_tiles) / float(ref)
+    return score, True, "", {
+        "num_tiles": num_tiles,
+        "reference_tiles": ref,
+        "normalized_score": score,
+    }
+
+
+def evaluate(output: Any, n: int = 10, **kwargs) -> dict:
+    """Score a candidate tile arrangement for the n×n grid problem.
+
+    Parameters
+    ----------
+    output:
+        List of tiles, each a (row, col, height, width) tuple of ints.
+    n:
+        Grid side length.
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+        score: -(num_tiles / reference). Higher is better; -1.0 matches reference.
+        valid: True iff all constraints satisfied.
+    """
+    try:
+        score, valid, error, metrics = _score_tiles(output, n)
+        return {"score": score, "valid": valid, "error": error, "metrics": metrics}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/no_isosceles_triangles/evaluator.py ===
+"""Evaluator for the No Isosceles Triangles problem."""
+import itertools
+
+
+def evaluate(output: object, n: int = 64, **kwargs) -> dict:
+    try:
+        points = [(int(p[0]), int(p[1])) for p in output]
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    if len(points) == 0:
+        return {"score": 0.0, "valid": False, "error": "No points provided", "metrics": {}}
+
+    # Check all points are in the grid
+    for x, y in points:
+        if not (0 <= x < n and 0 <= y < n):
+            return {"score": 0.0, "valid": False,
+                    "error": f"Point ({x},{y}) is outside the {n}x{n} grid", "metrics": {}}
+
+    # Check no duplicates
+    if len(set(points)) != len(points):
+        return {"score": 0.0, "valid": False, "error": "Duplicate points found", "metrics": {}}
+
+    def dsq(p, q):
+        return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+
+    # Check no isosceles: for every ordered triple (a, b, c), dist(a,b) != dist(b,c)
+    for a, b, c in itertools.permutations(points, 3):
+        if dsq(a, b) == dsq(b, c):
+            return {"score": 0.0, "valid": False,
+                    "error": f"Isosceles triple found: a={a}, b={b}, c={c}", "metrics": {}}
+
+    score = float(len(points)) / n
+    return {"score": score, "valid": True, "error": "",
+            "metrics": {"num_points": len(points), "normalized_score": score}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/online_bin_packing/evaluator.py ===
+"""Evaluator for the Online Bin Packing problem.
+
+The candidate provides a *heuristic function* that receives the current item
+size and a list of remaining capacities of open bins, and returns the index
+of the bin to place the item in (or -1 to open a new bin).
+
+The evaluator simulates the online process on a random instance and returns
+the negative number of bins used (so that maximising the score is equivalent
+to minimising the number of bins).
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
+"""
+
+#from __future__ import annotations
+
+import numpy as np
+
+
+def evaluate(
+    output: object,
+    num_items: int = 100,
+    seed: int = 42,
+    **kwargs,
+) -> dict:
+    """Score a candidate online bin-packing heuristic.
+
+    Parameters
+    ----------
+    output:
+        A callable with signature ``(item_size: float, bins: list[float]) -> int``
+        where *bins* is a list of remaining capacities of open bins and the
+        return value is an index into *bins* (place item there) or -1 (open a
+        new bin).
+    num_items:
+        Number of items in the simulation.
+    seed:
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        ``score`` = ``-num_bins_used`` (higher is better; fewer bins is better).
+        ``valid`` = True iff the heuristic successfully packed all items.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``num_bins``, ``num_items``).
+    """
+    if not callable(output):
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": "output must be a callable with signature (item_size, bins) -> int",
+            "metrics": {},
+        }
+
+    rng = np.random.default_rng(seed)
+    items = rng.uniform(0.0, 1.0, size=num_items).tolist()
+
+    bins: list[float] = []  # remaining capacity of each open bin
+    BIN_CAPACITY = 1.0
+
+    try:
+        for item_size in items:
+            if item_size > BIN_CAPACITY:
+                return {
+                    "score": 0.0,
+                    "valid": False,
+                    "error": f"Item size {item_size} exceeds bin capacity {BIN_CAPACITY}",
+                    "metrics": {},
+                }
+
+            idx = output(item_size, list(bins))
+
+            if idx == -1 or len(bins) == 0:
+                bins.append(BIN_CAPACITY - item_size)
+            else:
+                if not isinstance(idx, int):
+                    try:
+                        idx = int(idx)
+                    except (TypeError, ValueError):
+                        return {
+                            "score": 0.0,
+                            "valid": False,
+                            "error": f"Heuristic returned non-integer index: {idx!r}",
+                            "metrics": {},
+                        }
+                if idx < 0 or idx >= len(bins):
+                    return {
+                        "score": 0.0,
+                        "valid": False,
+                        "error": f"Bin index {idx} out of range (num_bins={len(bins)})",
+                        "metrics": {},
+                    }
+                if bins[idx] < item_size:
+                    return {
+                        "score": 0.0,
+                        "valid": False,
+                        "error": (
+                            f"Item of size {item_size:.4f} does not fit in bin {idx} "
+                            f"with remaining capacity {bins[idx]:.4f}"
+                        ),
+                        "metrics": {},
+                    }
+                bins[idx] -= item_size
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    num_bins = len(bins)
+    return {
+        "score": float(-num_bins),
+        "valid": True,
+        "error": "",
+        "metrics": {"num_bins": num_bins, "num_items": num_items},
+    }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/ring_loading_problem/evaluator.py ===
+"""Evaluator for the Ring Loading Problem."""
+import itertools
+
+
+def _compute_alpha(u, v):
+    m = len(u)
+    if m == 0:
+        return 0.0
+    best_alpha = float("inf")
+    z_choices = [(vi, -ui) for ui, vi in zip(u, v)]
+    for z in itertools.product(*z_choices):
+        z = list(z)
+        max_imbalance = 0.0
+        for k in range(1, m):
+            left = sum(z[:k])
+            right = sum(z[k:])
+            max_imbalance = max(max_imbalance, abs(left - right))
+        best_alpha = min(best_alpha, max_imbalance)
+    return best_alpha
+
+
+def evaluate(output: object, m: int = 15, **kwargs) -> dict:
+    try:
+        params = list(output)
+        if len(params) != m:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Expected {m} pairs, got {len(params)}", "metrics": {}}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    u, v = [], []
+    for item in params:
+        try:
+            ui, vi = abs(float(item[0])), abs(float(item[1]))
+        except Exception:
+            return {"score": 0.0, "valid": False,
+                    "error": "Each item must be an (u, v) pair of numbers", "metrics": {}}
+        s = ui + vi
+        if s > 1.0 + 1e-9:
+            # Normalize so u+v <= 1
+            ui /= s
+            vi /= s
+        u.append(ui)
+        v.append(vi)
+
+    try:
+        alpha = _compute_alpha(u, v)
+        return {"score": alpha, "valid": True, "error": "",
+                "metrics": {"alpha": alpha}}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/combinatorics/sums_differences/evaluator.py ===
+"""Evaluator for the Sums and Differences (Ruzsa's inequality) problem.
+
+Matches the scoring from sums_differences_problems.ipynb Cell 5:
+  n_unique = len(set(A))
+  lhs = |A-A| / n_unique
+  rhs = |A+A| / n_unique
+  score = log(rhs) / log(lhs) + (1 - 1/n_unique) / 100
+"""
+import math
+
+
+def evaluate(output: object, **kwargs) -> dict:
+    try:
+        lst = [int(x) for x in output]
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if len(lst) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": "Need at least 2 elements", "metrics": {}}
+
+    lst_set = set(lst)
+    if len(lst_set) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": "Elements must be distinct", "metrics": {}}
+
+    # Check for values that are too large
+    for x in lst_set:
+        if abs(x) > 2_000_000_000:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Element {x} exceeds 2_000_000_000", "metrics": {}}
+
+    n_unique = len(lst_set)
+
+    a_minus_a = set(i - j for i in lst_set for j in lst_set)
+    a_plus_a = set(i + j for i in lst_set for j in lst_set)
+
+    lhs = len(a_minus_a) / n_unique   # |A-A| / |A|
+    rhs = len(a_plus_a) / n_unique    # |A+A| / |A|
+
+    if lhs <= 1.0 or rhs <= 1.0:
+        return {"score": 0.0, "valid": False,
+                "error": "log base would be <= 1", "metrics": {}}
+
+    try:
+        # Match notebook Cell 5: log(rhs) / log(lhs) + (1 - 1/n_unique) / 100
+        score = math.log(rhs) / math.log(lhs) + (1.0 - 1.0 / n_unique) / 100.0
+    except (ZeroDivisionError, ValueError) as exc:
+        return {"score": 0.0, "valid": False,
+                "error": f"Cannot compute log ratio: {exc}", "metrics": {}}
+
+    return {"score": score, "valid": True, "error": "",
+            "metrics": {"size_A": n_unique, "|A-A|": len(a_minus_a), "|A+A|": len(a_plus_a),
+                        "lhs": lhs, "rhs": rhs}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/circle_packing/evaluator.py ===
+"""Evaluator for the Circle Packing problem.
+
+Given n centres in the unit square [0,1]^2, the score is the minimum pairwise
+Euclidean distance between any two centres.  All centres must lie strictly
+inside [0,1]^2 (boundary inclusive).
+
+This file is standalone and library-agnostic — it does NOT import from
+autoresearch_problems.  The only dependency is numpy.
+"""
+
+import numpy as np
+
+
+def evaluate(output: object, n: int = 26, **kwargs) -> dict:
+    """Score a candidate circle packing.
+
+    Parameters
+    ----------
+    output:
+        A 2-D array-like of shape ``(n, 2)`` with float entries in ``[0, 1]``.
+    n:
+        Expected number of circles.
+
+    Returns
+    -------
+    dict
+        ``score`` = minimum pairwise distance (higher is better).
+        ``valid`` = True iff all centres are in [0,1]^2 and count == n.
+        ``error`` = description of the first error found, or empty string.
+        ``metrics`` = dict with extra info (e.g. ``min_pairwise_distance``).
+    """
+    try:
+        centres = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+    if centres.ndim != 2 or centres.shape != (n, 2):
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"Expected shape ({n}, 2), got {centres.shape}",
+            "metrics": {},
+        }
+
+    if np.any(centres < 0.0) or np.any(centres > 1.0):
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": "All centres must be in [0, 1]^2",
+            "metrics": {},
+        }
+
+    # Compute all pairwise distances
+    diff = centres[:, None, :] - centres[None, :, :]  # (n, n, 2)
+    dist = np.sqrt((diff ** 2).sum(axis=-1))           # (n, n)
+
+    # Mask diagonal (distance to self = 0)
+    np.fill_diagonal(dist, np.inf)
+    min_dist = float(dist.min())
+
+    return {
+        "score": min_dist,
+        "valid": True,
+        "error": "",
+        "metrics": {"min_pairwise_distance": min_dist},
+    }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/equidistant_points_in_convex_polygons/evaluator.py ===
+"""Evaluator for the Equidistant Points in Convex Polygons problem.
+
+The problem asks: does every convex polygon have at least one vertex v with
+no 4 other vertices equidistant from v?  The goal is to find a convex polygon
+that is a counterexample, i.e. every vertex has (approximately) 4 equidistant
+neighbours.
+
+solve() must return a 2-D float array of shape (num_vertex, 2) giving the
+vertices of the candidate polygon in order.
+
+Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0).
+"""
+
+import math
+
+import numpy as np
+
+
+# ---------------------------------------------------------------------------
+# Convexity check
+# ---------------------------------------------------------------------------
+
+def _is_convex_polygon(polygon: list) -> bool:
+    """Return True iff the sequence of 2-D points forms a strictly convex polygon."""
+    try:
+        n = len(polygon)
+        if n < 3:
+            return False
+        if len(set(tuple(p) for p in polygon)) != n:
+            return False  # duplicate vertices
+
+        pts = [tuple(p) for p in polygon]
+        old_x, old_y = pts[-2]
+        new_x, new_y = pts[-1]
+        new_dir = math.atan2(new_y - old_y, new_x - old_x)
+        angle_sum = 0.0
+        orientation = 0.0
+
+        for idx, (px, py) in enumerate(pts):
+            old_x, old_y, old_dir = new_x, new_y, new_dir
+            new_x, new_y = px, py
+            new_dir = math.atan2(new_y - old_y, new_x - old_x)
+
+            if old_x == new_x and old_y == new_y:
+                return False  # zero-length side
+
+            angle = new_dir - old_dir
+            if angle <= -math.pi:
+                angle += 2 * math.pi
+            elif angle > math.pi:
+                angle -= 2 * math.pi
+
+            if angle == 0.0:
+                return False  # collinear vertices
+
+            if idx == 0:
+                orientation = 1.0 if angle > 0.0 else -1.0
+            elif orientation * angle <= 0.0:
+                return False  # inconsistent turning direction
+
+            angle_sum += angle
+
+        return abs(round(angle_sum / (2 * math.pi))) == 1
+    except (ArithmeticError, TypeError, ValueError, IndexError):
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Per-vertex score
+# ---------------------------------------------------------------------------
+
+def _vertex_score(vertex_idx: int, pts: list) -> float:
+    """Score for a single vertex: how close is it to having 4 equidistant neighbours.
+
+    Returns a value in [0, 1].  Returns 0 if the configuration is degenerate.
+    Returns -1 as an error sentinel.
+    """
+    n = len(pts)
+    if n < 5:
+        return 0.0
+
+    v = np.array(pts[vertex_idx], dtype=float)
+    dists = []
+    for i, p in enumerate(pts):
+        if i == vertex_idx:
+            continue
+        d = float(np.linalg.norm(v - np.array(p, dtype=float)))
+        if d < 5e-2:
+            return 0.0  # overlapping point
+        dists.append(d)
+
+    if len(dists) != n - 1:
+        return -1.0
+
+    dists.sort()
+    nd = len(dists)
+
+    # Find the minimum gap between consecutive distances
+    min_gap = float('inf')
+    min_k = -1
+    for k in range(nd - 1):
+        gap = dists[k + 1] - dists[k]
+        if gap < min_gap:
+            min_gap = gap
+            min_k = k
+
+    if min_k == -1:
+        return 0.0
+
+    d_k = dists[min_k]
+    d_k1 = dists[min_k + 1]
+    D_v = (d_k + d_k1) / 2.0
+    if D_v < 1e-1:
+        return 0.0
+
+    # Pick 4 indices centred around the minimum gap
+    k = min_k
+    if k == 0:
+        sel = [0, 1, 2, 3]
+    elif k == nd - 2:
+        sel = [nd - 4, nd - 3, nd - 2, nd - 1]
+    else:
+        sel = [k - 1, k, k + 1, k + 2]
+
+    sel = [i for i in sel if 0 <= i < nd]
+    if len(sel) < 4:
+        # Fallback: centre as best we can
+        start = max(0, min(k - 1, nd - 4))
+        sel = list(range(start, start + 4))
+    if len(sel) < 4:
+        return 0.0
+
+    try:
+        d0, d1, d2, d3 = dists[sel[0]], dists[sel[1]], dists[sel[2]], dists[sel[3]]
+    except IndexError:
+        return 0.0
+
+    if d0 < 1e-2 or d1 < 1e-2:
+        return 0.0
+
+    def _ratio(a: float, b: float) -> float:
+        return max(a / b, b / a) if b > 1e-12 else float('inf')
+
+    raw = (_ratio(d0, D_v) + _ratio(d1, D_v) + _ratio(d2, D_v) + _ratio(d3, D_v)) / 4.0
+    if raw < 1e-2:
+        return 0.0
+
+    return max(0.0, min(1.0, 1.0 / raw))
+
+
+# ---------------------------------------------------------------------------
+# Public entry-point
+# ---------------------------------------------------------------------------
+
+def evaluate(output, num_vertex: int = 10, **kwargs) -> dict:
+    """Score a candidate convex polygon for the equidistant-vertices problem.
+
+    Parameters
+    ----------
+    output:
+        Array-like of shape (num_vertex, 2) giving polygon vertices in order.
+    num_vertex:
+        Expected number of vertices.
+
+    Returns
+    -------
+    dict
+        score  : minimum per-vertex equidistance score in [0, 1].
+        valid  : True iff the polygon is strictly convex and well-formed.
+        error  : description of the first error, or ''.
+        metrics: dict with per-vertex scores and additional info.
+    """
+    try:
+        coords = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False,
+                "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+    if coords.ndim != 2 or coords.shape != (num_vertex, 2):
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected shape ({num_vertex}, 2), got {coords.shape}",
+                "metrics": {}}
+
+    if not np.isfinite(coords).all():
+        return {"score": 0.0, "valid": False,
+                "error": "Array contains NaN or Inf", "metrics": {}}
+
+    # Normalise: centre and scale so average distance to centroid == 1
+    centroid = coords.mean(axis=0)
+    centered = coords - centroid
+    avg_dist = float(np.linalg.norm(centered, axis=1).mean())
+    if avg_dist < 1e-3:
+        return {"score": 0.0, "valid": False,
+                "error": "Polygon has near-zero extent", "metrics": {}}
+    scaled = centered / avg_dist
+
+    pts = [tuple(row) for row in scaled]
+
+    if not _is_convex_polygon(pts):
+        return {"score": 0.0, "valid": False,
+                "error": "Polygon is not strictly convex", "metrics": {}}
+
+    if num_vertex < 5:
+        return {"score": 0.0, "valid": False,
+                "error": "num_vertex must be >= 5", "metrics": {}}
+
+    vertex_scores = []
+    for i in range(num_vertex):
+        vs = _vertex_score(i, pts)
+        if vs < 0:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Error computing score for vertex {i}", "metrics": {}}
+        vertex_scores.append(vs)
+
+    min_score = float(min(vertex_scores))
+    return {
+        "score": min_score,
+        "valid": True,
+        "error": "",
+        "metrics": {
+            "min_vertex_score": min_score,
+            "mean_vertex_score": float(np.mean(vertex_scores)),
+            "vertex_scores": vertex_scores,
+        },
+    }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/kakeya_needle_2d/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the 2D Kakeya needle problem.
+
+Given n positions x = [x_1, ..., x_n], computes the area of the union of
+triangles R_i with vertices (x_i, 0), (x_i + 1/n, 0), (x_i + i/n, 1).
+Score = -(area / keich_reference_area); higher (less negative) is better.
+"""
+
+import numpy as np
+
+
+def _keich_positions(n: int) -> list:
+    pos = int(np.log2(n)) if n > 1 else 1
+    j = np.arange(1, pos + 1)
+    x = []
+    for i in range(n):
+        eps = np.array(list(str(bin(i))[2:]), dtype=int)
+        eps = np.pad(eps, (pos - len(eps), 0), "constant")
+        x.append(float(np.sum((1 - j) * eps * (2.0 ** -j) / pos)))
+    return x
+
+
+def _union_area(x: list) -> float:
+    try:
+        from shapely import geometry
+    except ImportError:
+        return _union_area_grid(x)
+
+    n = len(x)
+    delta = 1.0 / n
+    polygons = []
+    for i in range(1, n + 1):
+        ai = i / n
+        xi = float(x[i - 1])
+        vertices = [(xi, 0), (xi + delta, 0), (xi + ai, 1)]
+        polygons.append(geometry.Polygon(vertices))
+
+    if not polygons:
+        return 0.0
+
+    union = polygons[0]
+    for p in polygons[1:]:
+        union = union.union(p)
+    return union.area
+
+
+def _union_area_grid(x: list, res: int = 500) -> float:
+    n = len(x)
+    delta = 1.0 / n
+    triangles = []
+    for i in range(1, n + 1):
+        ai = i / n
+        xi = float(x[i - 1])
+        triangles.append([(xi, 0), (xi + delta, 0), (xi + ai, 1)])
+
+    all_verts = [v for tri in triangles for v in tri]
+    min_x = min(v[0] for v in all_verts)
+    max_x = max(v[0] for v in all_verts)
+    width = max_x - min_x
+    if width < 1e-9:
+        return 0.0
+
+    xs = np.linspace(min_x, max_x, res)
+    ys = np.linspace(0, 1, res)
+    gx, gy = np.meshgrid(xs, ys)
+    points = np.stack([gx.ravel(), gy.ravel()], axis=1)
+    inside = np.zeros(len(points), dtype=bool)
+    for tri in triangles:
+        v1, v2, v3 = tri
+        def cross(o, a, p):
+            return (a[0]-o[0])*(p[1]-o[1]) - (a[1]-o[1])*(p[0]-o[0])
+        d1 = cross(v1, v2, (points[:,0], points[:,1]))
+        d2 = cross(v2, v3, (points[:,0], points[:,1]))
+        d3 = cross(v3, v1, (points[:,0], points[:,1]))
+        m = ~((d1 < 0) | (d2 < 0) | (d3 < 0)) | ~((d1 > 0) | (d2 > 0) | (d3 > 0))
+        inside |= m
+    cell_area = (width / res) * (1.0 / res)
+    return float(np.sum(inside) * cell_area)
+
+
+def evaluate(output, n: int = 32, **kwargs) -> dict:
+    """Evaluate 2D Kakeya needle positions.
+
+    Parameters
+    ----------
+    output : array-like of float, length n
+        Positions x_1, ..., x_n.
+    n : int
+        Number of triangles (default 32).
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+    """
+    try:
+        x = list(output)
+        if len(x) != n:
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected {n} positions, got {len(x)}",
+                "metrics": {},
+            }
+        x = [float(v) for v in x]
+
+        area = _union_area(x)
+
+        # Compute Keich reference area for normalisation
+        keich_pos = _keich_positions(n)
+        keich_area = _union_area(keich_pos)
+
+        if keich_area < 1e-12:
+            score = 0.0
+        else:
+            score = -(area / keich_area)
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "area": area,
+                "keich_area": keich_area,
+                "ratio": area / keich_area if keich_area > 1e-12 else None,
+            },
+        }
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/kakeya_needle_3d/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the 3D Kakeya needle problem.
+
+Given n^2 positions (x_k, y_k) for k=0..n^2-1 and index pairs (i,j) for
+i,j=0..n-1, we have n^2 tubes. Each tube T_{ij} at position (x_k, y_k)
+connects a unit square at z=0 to a shifted unit square at z=1.
+
+Score = -(volume / reference_volume); higher (less negative) is better.
+Uses Monte Carlo estimation of the union volume.
+"""
+
+import numpy as np
+
+
+def _union_volume_mc(x_pos: np.ndarray, y_pos: np.ndarray,
+                     n: int, num_samples: int = 200_000,
+                     seed: int = 42) -> float:
+    """Monte Carlo estimate of the union volume of n^2 tubes.
+
+    Matches the notebook's get_score which samples in [0, 2.5] x [0, 2.5] x [0, 1].
+    """
+    rng = np.random.default_rng(seed)
+    inv_n = 1.0 / n
+
+    # Sample points in [0, 2.5] x [0, 2.5] x [0, 1] (matches notebook)
+    xy_extent = 2.5
+    pts = rng.uniform(0, 1, size=(num_samples, 3))
+    pts[:, 0] *= xy_extent
+    pts[:, 1] *= xy_extent
+
+    a, b, c = pts[:, 0], pts[:, 1], pts[:, 2]
+
+    in_union = np.zeros(num_samples, dtype=bool)
+    for idx in range(n * n):
+        xi = float(x_pos[idx])
+        yi = float(y_pos[idx])
+        ii = idx // n
+        ji = idx % n
+
+        x_min = (1 - c) * xi + c * (xi + ii * inv_n)
+        x_max = (1 - c) * (xi + inv_n) + c * (xi + (ii + 1) * inv_n)
+        y_min = (1 - c) * yi + c * (yi + ji * inv_n)
+        y_max = (1 - c) * (yi + inv_n) + c * (yi + (ji + 1) * inv_n)
+
+        inside = (x_min <= a) & (a <= x_max) & (y_min <= b) & (b <= y_max)
+        in_union |= inside
+
+    # Volume = fraction_in_union * bounding_box_volume
+    vol = float(np.mean(in_union)) * xy_extent * xy_extent * 1.0
+    return vol
+
+
+def evaluate(output, n: int = 8, **kwargs) -> dict:
+    """Evaluate 3D Kakeya needle positions.
+
+    Parameters
+    ----------
+    output : array-like, shape (2, n*n) or (n*n, 2)
+        Positions: output[0] = x coords, output[1] = y coords.
+    n : int
+        Grid size (default 8, giving 64 tubes).
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+    """
+    try:
+        arr = np.array(output, dtype=float)
+
+        if arr.shape == (2, n * n):
+            x_pos = arr[0]
+            y_pos = arr[1]
+        elif arr.shape == (n * n, 2):
+            x_pos = arr[:, 0]
+            y_pos = arr[:, 1]
+        elif arr.ndim == 1 and len(arr) == 2 * n * n:
+            x_pos = arr[:n * n]
+            y_pos = arr[n * n:]
+        else:
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Unexpected shape {arr.shape}; expected (2, {n*n})",
+                "metrics": {},
+            }
+
+        vol = _union_volume_mc(x_pos, y_pos, n)
+
+        # Reference: random baseline ~1/n^2 * extent^2 is hard to compute;
+        # use the trivial upper bound of 1.0 as normalisation denominator.
+        score = -vol
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {"union_volume": vol},
+        }
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/kissing_cylinders/evaluator.py ===
+"""Evaluator for the Kissing Cylinders problem.
+
+Matches kissing_cylinders.ipynb Cell 1: calculate_arrangement_score_numba.
+
+The score is -sum_{i<j} (dist(axis_i, axis_j) - 2.0)^2 for all pairs.
+Input: (n_cylinders, 6) array where each row is [p0, p1, p2, v0, v1, v2]
+(point on axis closest to origin, and unit direction vector).
+"""
+import numpy as np
+
+
+def _dist_between_lines(p1, v1, p2, v2):
+    """Shortest distance between two infinite lines."""
+    cross = np.cross(v1, v2)
+    norm_cross = np.linalg.norm(cross)
+    if norm_cross < 1e-9:  # parallel lines
+        return float(np.linalg.norm(np.cross(p2 - p1, v1)))
+    return float(abs(np.dot(p2 - p1, cross)) / norm_cross)
+
+
+def evaluate(output: object, n_cylinders: int = 7, target_dist: float = 2.0,
+             contact_box_limit: float = 100.0, **kwargs) -> dict:
+    """Score a candidate cylinder arrangement.
+
+    Parameters
+    ----------
+    output : array-like of shape (n_cylinders, 6)
+        Each row is [p0, p1, p2, v0, v1, v2] — point on axis (closest to origin)
+        and direction vector.
+    n_cylinders : int
+        Expected number of cylinders (default 7).
+    target_dist : float
+        Target axis-to-axis distance for tangency (default 2.0 for unit cylinders).
+    contact_box_limit : float
+        Midpoints of closest approach must lie within this box (default 100.0).
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+        score = -sum_{i<j} (d_{ij} - target_dist)^2  (0 is perfect, negative otherwise).
+    """
+    try:
+        arr = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": -np.inf, "valid": False, "error": str(exc), "metrics": {}}
+    if arr.ndim != 2 or arr.shape != (n_cylinders, 6):
+        return {"score": -np.inf, "valid": False,
+                "error": f"Expected ({n_cylinders}, 6), got {arr.shape}", "metrics": {}}
+
+    if not np.all(np.isfinite(arr)):
+        return {"score": -np.inf, "valid": False,
+                "error": "Non-finite values in input", "metrics": {}}
+
+    # Extract and validate cylinders
+    ps = []
+    vs = []
+    for i in range(n_cylinders):
+        p = arr[i, :3]
+        v = arr[i, 3:]
+        v_norm = np.linalg.norm(v)
+        if v_norm < 1e-10:
+            return {"score": -np.inf, "valid": False,
+                    "error": f"Cylinder {i} has zero direction vector", "metrics": {}}
+        v = v / v_norm
+        # Standardize p to be the point on the axis closest to origin
+        p = p - np.dot(p, v) * v
+        ps.append(p)
+        vs.append(v)
+
+    # Compute pairwise penalties (all pairs)
+    total_penalty = 0.0
+    pairwise_dists = []
+    for i in range(n_cylinders):
+        for j in range(i + 1, n_cylinders):
+            d = _dist_between_lines(ps[i], vs[i], ps[j], vs[j])
+            pairwise_dists.append(d)
+            total_penalty += (d - target_dist) ** 2
+
+            # Check contact point constraint (midpoint of closest approach)
+            p1, v1 = ps[i], vs[i]
+            p2, v2 = ps[j], vs[j]
+            dp = p1 - p2
+            v1_dot_v2 = np.dot(v1, v2)
+            if abs(abs(v1_dot_v2) - 1.0) < 1e-7:
+                # Parallel: midpoint of standardized points
+                mid = (p1 + p2) / 2.0
+                m = mid - np.dot(mid, v1) * v1
+            else:
+                denom = 1.0 - v1_dot_v2 ** 2
+                dp_dot_v1 = np.dot(dp, v1)
+                dp_dot_v2 = np.dot(dp, v2)
+                t_c = (v1_dot_v2 * (-dp_dot_v2) - (-dp_dot_v1)) / denom
+                s_c = ((-dp_dot_v2) - v1_dot_v2 * (-dp_dot_v1)) / denom
+                c1 = p1 + t_c * v1
+                c2 = p2 + s_c * v2
+                m = (c1 + c2) / 2.0
+            if np.any(np.abs(m) > contact_box_limit):
+                return {"score": -np.inf, "valid": False,
+                        "error": f"Contact point ({i},{j}) outside box", "metrics": {}}
+
+    score = -total_penalty
+    return {"score": float(score), "valid": True, "error": "",
+            "metrics": {"pairwise_distances": pairwise_dists, "penalty": float(total_penalty)}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/minimizing_max_min_dist_2d/evaluator.py ===
+"""Evaluator for the minimizing max/min distance problem in 2D with 16 points.
+
+The candidate program's solve() function should return a numpy array of shape
+(16, 2) containing the (x, y) coordinates of 16 points in 2D space.
+
+The objective is to MAXIMIZE:
+  (dmin / dmax)²
+where dmin is the minimum pairwise distance and dmax is the maximum pairwise
+distance between all point pairs.
+
+Score: (dmin/dmax)² / BENCHMARK  (higher is better; > 1 means a new record)
+BENCHMARK = 1 / 12.889266112  (found by AlphaEvolve)
+
+Some of the code in this file is adapted from:
+google-deepmind/alphaevolve_results (Apache License v2.0).
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+try:
+    import scipy.spatial.distance as _spdist
+    _HAS_SCIPY = True
+except ImportError:
+    _HAS_SCIPY = False
+
+NUM_POINTS = 16
+DIMENSION = 2
+BENCHMARK = 1.0 / 12.889266112
+
+
+def _pdist(points: np.ndarray) -> np.ndarray:
+    """Return pairwise distances; uses scipy if available, else pure numpy."""
+    if _HAS_SCIPY:
+        return _spdist.pdist(points)
+    n = len(points)
+    dists = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            dists.append(float(np.linalg.norm(points[i] - points[j])))
+    return np.array(dists)
+
+
+def evaluate(output, n: int = NUM_POINTS, d: int = DIMENSION, **kwargs) -> dict:
+    """Score a candidate point arrangement.
+
+    Parameters
+    ----------
+    output:
+        A 2-D array-like of shape ``(n, d)`` with float entries.
+    n:
+        Expected number of points.
+    d:
+        Expected dimensionality.
+
+    Returns
+    -------
+    dict
+        score  : (dmin/dmax)² / BENCHMARK  (higher is better)
+        valid  : True iff shape is correct and distances are finite
+        error  : "" on success, description of first error otherwise
+        metrics: dict with min_dist, max_dist, ratio_squared
+    """
+    try:
+        try:
+            points = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+        if points.ndim != 2 or points.shape != (n, d):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected shape ({n}, {d}), got {points.shape}",
+                "metrics": {},
+            }
+
+        if not np.isfinite(points).all():
+            return {"score": 0.0, "valid": False, "error": "Points contain NaN or Inf values", "metrics": {}}
+
+        pairwise_distances = _pdist(points)
+
+        if len(pairwise_distances) == 0:
+            return {"score": 0.0, "valid": False, "error": "No pairwise distances computed", "metrics": {}}
+
+        min_distance = float(np.min(pairwise_distances))
+        max_distance = float(np.max(pairwise_distances))
+
+        if max_distance <= 0:
+            inv_ratio_squared = 0.0
+        else:
+            inv_ratio_squared = (min_distance / max_distance) ** 2
+
+        score = inv_ratio_squared / BENCHMARK if BENCHMARK > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "min_dist": min_distance,
+                "max_dist": max_distance,
+                "ratio_squared": inv_ratio_squared,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/minimizing_max_min_dist_3d/evaluator.py ===
+"""Evaluator for the minimizing max/min distance problem in 3D with 14 points.
+
+The candidate program's solve() function should return a numpy array of shape
+(14, 3) containing the (x, y, z) coordinates of 14 points in 3D space.
+
+The objective is to MAXIMIZE:
+  (dmin / dmax)²
+where dmin is the minimum pairwise distance and dmax is the maximum pairwise
+distance between all point pairs.
+
+Score: (dmin/dmax)² / BENCHMARK  (higher is better; > 1 means a new record)
+BENCHMARK = 1 / 4.165849767  (found by AlphaEvolve)
+
+Some of the code in this file is adapted from:
+google-deepmind/alphaevolve_results (Apache License v2.0).
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import numpy as np
+
+try:
+    import scipy.spatial.distance as _spdist
+    _HAS_SCIPY = True
+except ImportError:
+    _HAS_SCIPY = False
+
+NUM_POINTS = 14
+DIMENSION = 3
+BENCHMARK = 1.0 / 4.165849767
+
+
+def _pdist(points: np.ndarray) -> np.ndarray:
+    """Return pairwise distances; uses scipy if available, else pure numpy."""
+    if _HAS_SCIPY:
+        return _spdist.pdist(points)
+    n = len(points)
+    dists = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            dists.append(float(np.linalg.norm(points[i] - points[j])))
+    return np.array(dists)
+
+
+def evaluate(output, n: int = NUM_POINTS, d: int = DIMENSION, **kwargs) -> dict:
+    """Score a candidate point arrangement.
+
+    Parameters
+    ----------
+    output:
+        A 2-D array-like of shape ``(n, d)`` with float entries.
+    n:
+        Expected number of points.
+    d:
+        Expected dimensionality.
+
+    Returns
+    -------
+    dict
+        score  : (dmin/dmax)² / BENCHMARK  (higher is better)
+        valid  : True iff shape is correct and distances are finite
+        error  : "" on success, description of first error otherwise
+        metrics: dict with min_dist, max_dist, ratio_squared
+    """
+    try:
+        try:
+            points = np.asarray(output, dtype=float)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+
+        if points.ndim != 2 or points.shape != (n, d):
+            return {
+                "score": 0.0,
+                "valid": False,
+                "error": f"Expected shape ({n}, {d}), got {points.shape}",
+                "metrics": {},
+            }
+
+        if not np.isfinite(points).all():
+            return {"score": 0.0, "valid": False, "error": "Points contain NaN or Inf values", "metrics": {}}
+
+        pairwise_distances = _pdist(points)
+
+        if len(pairwise_distances) == 0:
+            return {"score": 0.0, "valid": False, "error": "No pairwise distances computed", "metrics": {}}
+
+        min_distance = float(np.min(pairwise_distances))
+        max_distance = float(np.max(pairwise_distances))
+
+        if max_distance <= 0:
+            inv_ratio_squared = 0.0
+        else:
+            inv_ratio_squared = (min_distance / max_distance) ** 2
+
+        score = inv_ratio_squared / BENCHMARK if BENCHMARK > 0 else 0.0
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "min_dist": min_distance,
+                "max_dist": max_distance,
+                "ratio_squared": inv_ratio_squared,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/moving_sofa_2d/evaluator.py ===
+"""Evaluator for the 2D Moving Sofa problem."""
+import numpy as np
+
+CORRIDOR_WIDTH = 1.0
+
+
+def _in_L_corridor(pts):
+    """Check which points lie in the L-shaped corridor.
+
+    The L-corridor consists of:
+    - Horizontal arm: y in [0, 1], x can be any value <= 1
+    - Vertical arm: x in [0, 1], y >= 0
+    The corner region (x in [0,1], y in [0,1]) is shared.
+    """
+    x, y = pts[:, 0], pts[:, 1]
+    w = CORRIDOR_WIDTH
+    mask_h = (y >= 0) & (y <= w) & (x <= w)
+    mask_v = (x >= 0) & (x <= w) & (y >= 0)
+    return mask_h | mask_v
+
+
+def _rotate_pts(pts, theta_deg):
+    theta = np.deg2rad(theta_deg)
+    c, s = np.cos(theta), np.sin(theta)
+    R = np.array([[c, -s], [s, c]])
+    return pts @ R.T
+
+
+def evaluate(output: object, n_poses: int = 20, n_grid: int = 50, **kwargs) -> dict:
+    try:
+        poses = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if poses.ndim != 2 or poses.shape[1] != 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected shape (m, 3) for poses [tx, ty, theta_deg], got {poses.shape}",
+                "metrics": {}}
+
+    # Candidate sofa points: sample the horizontal corridor region
+    xs = np.linspace(-3 * CORRIDOR_WIDTH, CORRIDOR_WIDTH, n_grid)
+    ys = np.linspace(0, CORRIDOR_WIDTH, n_grid)
+    gx, gy = np.meshgrid(xs, ys)
+    candidate_pts = np.column_stack([gx.ravel(), gy.ravel()])
+
+    # A point p is in the sofa iff at every pose (tx, ty, theta), the
+    # transformed point R(theta)*p + (tx, ty) lies in the L-corridor.
+    alive = np.ones(len(candidate_pts), dtype=bool)
+
+    for pose in poses:
+        tx, ty, theta_deg = float(pose[0]), float(pose[1]), float(pose[2])
+        rotated = _rotate_pts(candidate_pts, theta_deg)
+        translated = rotated + np.array([tx, ty])
+        in_corr = _in_L_corridor(translated)
+        alive &= in_corr
+
+    n_alive = int(np.sum(alive))
+    cell_area = abs((xs[1] - xs[0]) * (ys[1] - ys[0]))
+    area = n_alive * cell_area
+
+    return {"score": area, "valid": True, "error": "",
+            "metrics": {"area": area, "n_alive": n_alive}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/moving_sofa_3d/evaluator.py ===
+"""Evaluator for the 3D Moving Sofa problem."""
+import numpy as np
+
+try:
+    from scipy.spatial.transform import Rotation
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+CORRIDOR_WIDTH = 1.0
+MIDDLE_LENGTH = 4.0
+
+
+def _in_corridor(pts):
+    """Check which points lie in the 3D L-shaped corridor.
+
+    The corridor has:
+    - Entry arm: x <= 0, y in [0, W], z in [0, W]  (extends in negative x)
+    - Middle arm: x in [0, W], y in [0, W+L], z in [0, W]
+    - Exit arm: x in [0, W], y in [W+L, W+L+W], z >= 0  (extends in +z direction)
+    """
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    w = CORRIDOR_WIDTH
+    yt = w + MIDDLE_LENGTH
+
+    mask1 = (x <= 0) & (y >= 0) & (y <= w) & (z >= 0) & (z <= w)
+    mask2 = (x >= 0) & (x <= w) & (y >= 0) & (y <= yt) & (z >= 0) & (z <= w)
+    mask3 = (x >= 0) & (x <= w) & (y >= yt) & (y <= yt + w) & (z >= 0)
+    return mask1 | mask2 | mask3
+
+
+def evaluate(output: object, n_poses: int = 20, n_grid: int = 20, **kwargs) -> dict:
+    if not HAS_SCIPY:
+        return {"score": 0.0, "valid": False, "error": "scipy required", "metrics": {}}
+    try:
+        poses = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if poses.ndim != 2 or poses.shape[1] != 6:
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected (m, 6) pose array [tx,ty,tz,yaw,pitch,roll], got {poses.shape}",
+                "metrics": {}}
+
+    # Candidate sofa points: sample the entry arm region
+    xs = np.linspace(-4, 0, n_grid)
+    ys = np.linspace(0, CORRIDOR_WIDTH, n_grid)
+    zs = np.linspace(0, CORRIDOR_WIDTH, n_grid)
+    gx, gy, gz = np.meshgrid(xs, ys, zs, indexing="ij")
+    candidate_pts = np.column_stack([gx.ravel(), gy.ravel(), gz.ravel()])
+
+    alive = np.ones(len(candidate_pts), dtype=bool)
+
+    for pose in poses:
+        tx, ty, tz = float(pose[0]), float(pose[1]), float(pose[2])
+        yaw, pitch, roll = float(pose[3]), float(pose[4]), float(pose[5])
+        try:
+            rot = Rotation.from_euler("ZYX", [yaw, pitch, roll], degrees=True)
+            rotated = rot.apply(candidate_pts)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Invalid rotation: {exc}", "metrics": {}}
+        translated = rotated + np.array([tx, ty, tz])
+        in_corr = _in_corridor(translated)
+        alive &= in_corr
+
+    n_alive = int(np.sum(alive))
+    cell_vol = abs((xs[1] - xs[0]) * (ys[1] - ys[0]) * (zs[1] - zs[0]))
+    volume = n_alive * cell_vol
+
+    return {"score": volume, "valid": True, "error": "",
+            "metrics": {"volume": volume, "n_alive": n_alive}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/no_5_on_sphere/evaluator.py ===
+"""Evaluator for the No 5 on a Sphere problem.
+
+The candidate program returns a list of integer triples (x, y, z) where each
+coordinate is in [0, n-1].  The set must contain no 5 co-spherical points.
+
+Five points are co-spherical iff the determinant of the 5×5 matrix with rows
+[x, y, z, x²+y²+z², 1] equals zero (Cayley-Menger condition).
+
+Score = number of points in the set (higher is better).
+
+Matches no_5_on_a_sphere.ipynb Cell 4/5/10.
+"""
+import numpy as np
+
+
+def _det5x5_int(matrix: np.ndarray) -> int:
+    """Exact 5x5 determinant using Laplace expansion along row 0."""
+    det = 0
+    for col in range(5):
+        # Minor indices (exclude col from columns)
+        minor_cols = [c for c in range(5) if c != col]
+        minor = matrix[1:, :][:, minor_cols]
+        sign = (-1) ** col
+        det += sign * int(matrix[0, col]) * int(np.linalg.det(minor.astype(np.float64)))
+    return det
+
+
+def _are_five_cospherical(points: np.ndarray) -> bool:
+    """Check if 5 integer 3D points are co-spherical using exact integer arithmetic."""
+    matrix = np.zeros((5, 5), dtype=np.int64)
+    for i in range(5):
+        p = points[i]
+        matrix[i, 0] = int(p[0])
+        matrix[i, 1] = int(p[1])
+        matrix[i, 2] = int(p[2])
+        matrix[i, 3] = int(p[0]) ** 2 + int(p[1]) ** 2 + int(p[2]) ** 2
+        matrix[i, 4] = 1
+    # Use floating-point det for efficiency; for integer grid points this is exact
+    # for reasonable n values
+    det = np.linalg.det(matrix.astype(np.float64))
+    return abs(det) < 0.5  # integers: if det is 0, it's exactly 0
+
+
+def evaluate(output: object, n: int = 50, **kwargs) -> dict:
+    """Score a candidate set of grid points for the no-5-on-a-sphere problem.
+
+    Parameters
+    ----------
+    output : list of (int, int, int) tuples
+        Each tuple is a point (x, y, z) in the grid [0, n-1]^3.
+    n : int
+        Grid size; coordinates must be in [0, n-1].
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+        score = number of valid points if no 5 are co-spherical, else 0.
+    """
+    try:
+        pts = []
+        for item in output:
+            try:
+                x, y, z = int(item[0]), int(item[1]), int(item[2])
+            except (TypeError, ValueError, IndexError) as exc:
+                return {"score": 0.0, "valid": False,
+                        "error": f"Invalid point {item}: {exc}", "metrics": {}}
+            pts.append((x, y, z))
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    if len(pts) < 1:
+        return {"score": 0.0, "valid": True, "error": "",
+                "metrics": {"num_points": 0}}
+
+    # Check coordinates are in valid range
+    for p in pts:
+        if not (0 <= p[0] < n and 0 <= p[1] < n and 0 <= p[2] < n):
+            return {"score": 0.0, "valid": False,
+                    "error": f"Point {p} out of grid [0,{n-1}]^3", "metrics": {}}
+
+    # Check for duplicate points
+    if len(set(pts)) < len(pts):
+        return {"score": 0.0, "valid": False, "error": "Duplicate points", "metrics": {}}
+
+    pts_arr = np.array(pts, dtype=np.int64)
+    num_pts = len(pts_arr)
+
+    if num_pts < 5:
+        return {"score": float(num_pts), "valid": True, "error": "",
+                "metrics": {"num_points": num_pts}}
+
+    # Check every combination of 5 points for co-sphericity
+    from itertools import combinations
+    for combo in combinations(range(num_pts), 5):
+        five_pts = pts_arr[list(combo)]
+        if _are_five_cospherical(five_pts):
+            return {"score": 0.0, "valid": False,
+                    "error": f"5 co-spherical points found at indices {combo}",
+                    "metrics": {"num_points": num_pts}}
+
+    return {"score": float(num_pts), "valid": True, "error": "",
+            "metrics": {"num_points": num_pts}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/ovals_problem/evaluator.py ===
+"""Evaluator for the Ovals problem (minimize Rayleigh quotient of a convex curve)."""
+import numpy as np
+
+try:
+    import scipy.interpolate
+    import scipy.integrate
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+
+def _make_periodic_spline(vals, n_pts):
+    xs = np.linspace(0, 2 * np.pi, n_pts + 1)
+    vals_periodic = list(vals) + [vals[0]]
+    return scipy.interpolate.make_interp_spline(xs, vals_periodic, k=4, bc_type="periodic")
+
+
+def evaluate(output: object, n: int = 100, **kwargs) -> dict:
+    if not HAS_SCIPY:
+        return {"score": 0.0, "valid": False, "error": "scipy not available", "metrics": {}}
+    try:
+        output = list(output)
+        if len(output) != 3:
+            return {"score": 0.0, "valid": False, "error": "Output must be [x, y, phi]", "metrics": {}}
+        x, y, phi = [np.asarray(v, dtype=float) for v in output]
+        if len(x) != n or len(y) != n or len(phi) != n:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Each array must have length {n}", "metrics": {}}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    try:
+        x_fn = _make_periodic_spline(x, n)
+        y_fn = _make_periodic_spline(y, n)
+        phi_fn = _make_periodic_spline(phi, n)
+
+        x_prime = x_fn.derivative(1)
+        y_prime = y_fn.derivative(1)
+
+        ts = np.linspace(0, 2 * np.pi, 10000, endpoint=False)
+        speed = np.sqrt(x_prime(ts) ** 2 + y_prime(ts) ** 2)
+        if np.min(speed) < 1e-4:
+            return {"score": 0.0, "valid": False,
+                    "error": "Curve speed is degenerate (near zero)", "metrics": {}}
+
+        phi_l2_raw, _ = scipy.integrate.quad(
+            lambda t: float(phi_fn(t)) ** 2, 0, 2 * np.pi, limit=500)
+        if phi_l2_raw < 1e-6:
+            return {"score": 0.0, "valid": False,
+                    "error": "phi is degenerate (near zero L2 norm)", "metrics": {}}
+
+        x_double_prime = x_fn.derivative(2)
+        y_double_prime = y_fn.derivative(2)
+        phi_prime = phi_fn.derivative(1)
+
+        # Check convexity: signed curvature must be positive everywhere
+        signed_kappa_vals = x_prime(ts) * y_double_prime(ts) - x_double_prime(ts) * y_prime(ts)
+        if np.any(signed_kappa_vals < -1e-6):
+            return {"score": 0.0, "valid": False,
+                    "error": "Curve is not convex (signed curvature is negative)", "metrics": {}}
+
+        def spd(t):
+            xp = float(x_prime(t))
+            yp = float(y_prime(t))
+            return np.sqrt(xp ** 2 + yp ** 2)
+
+        def kappa(t):
+            xp = float(x_prime(t))
+            yp = float(y_prime(t))
+            xpp = float(x_double_prime(t))
+            ypp = float(y_double_prime(t))
+            s = np.sqrt(xp ** 2 + yp ** 2)
+            return abs(xp * ypp - xpp * yp) / s ** 3
+
+        # Rescale so arc-length = 2*pi (matches notebook's rescaling step)
+        arc_length, _ = scipy.integrate.quad(spd, 0, 2 * np.pi, limit=500)
+        if arc_length < 1e-6:
+            return {"score": 0.0, "valid": False,
+                    "error": "Curve has near-zero arc length", "metrics": {}}
+        scale = 2 * np.pi / arc_length
+
+        # After rescaling: new_spd(t) = scale * spd(t), new_kappa(t) = kappa(t) / scale
+        # Rayleigh quotient in arc-length: Q = num / denom
+        # num = ∫ (phi'(t)^2 / new_spd(t) + new_kappa(t)^2 * phi(t)^2 * new_spd(t)) dt
+        # denom = ∫ phi(t)^2 * new_spd(t) dt
+        phi_l2, _ = scipy.integrate.quad(
+            lambda t: float(phi_fn(t)) ** 2 * (scale * spd(t)),
+            0, 2 * np.pi, limit=500)
+        if phi_l2 < 1e-6:
+            return {"score": 0.0, "valid": False,
+                    "error": "phi is degenerate (near zero weighted L2 norm)", "metrics": {}}
+
+        numerator, _ = scipy.integrate.quad(
+            lambda t: (float(phi_prime(t)) ** 2 / (scale * spd(t))
+                       + (kappa(t) / scale) ** 2 * float(phi_fn(t)) ** 2 * (scale * spd(t))),
+            0, 2 * np.pi, limit=500)
+
+        rayleigh = numerator / phi_l2
+        return {"score": -rayleigh, "valid": True, "error": "",
+                "metrics": {"rayleigh_quotient": rayleigh}}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/packing_circles_max_sum_radii/evaluator.py ===
+"""Evaluator for the Circle Packing (maximize sum of radii) problem."""
+import numpy as np
+
+
+def evaluate(output: object, n: int = 26, **kwargs) -> dict:
+    try:
+        arr = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if arr.ndim != 2 or arr.shape != (n, 3):
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected ({n}, 3), got {arr.shape}", "metrics": {}}
+
+    cx, cy, r = arr[:, 0], arr[:, 1], arr[:, 2]
+
+    if np.any(r <= 0):
+        return {"score": 0.0, "valid": False, "error": "All radii must be positive", "metrics": {}}
+
+    # Check circles are inside [0,1]^2
+    if (np.any(cx - r < -1e-9) or np.any(cx + r > 1 + 1e-9)
+            or np.any(cy - r < -1e-9) or np.any(cy + r > 1 + 1e-9)):
+        return {"score": 0.0, "valid": False,
+                "error": "All circles must fit inside the unit square [0,1]^2", "metrics": {}}
+
+    # Check no two circles overlap
+    for i in range(n):
+        for j in range(i + 1, n):
+            dist = np.sqrt((cx[i] - cx[j]) ** 2 + (cy[i] - cy[j]) ** 2)
+            if dist < r[i] + r[j] - 1e-9:
+                return {"score": 0.0, "valid": False,
+                        "error": f"Circles {i} and {j} overlap (dist={dist:.4f} < {r[i]+r[j]:.4f})",
+                        "metrics": {}}
+
+    total_r = float(np.sum(r))
+    return {"score": total_r, "valid": True, "error": "",
+            "metrics": {"sum_of_radii": total_r, "min_radius": float(np.min(r)),
+                        "max_radius": float(np.max(r))}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/packing_unit_cubes/evaluator.py ===
+"""Evaluator for the Packing Unit Cubes problem.
+
+Matches packing_unit_cubes.ipynb Cell 4: calculate_packing_score_cubes_3d.
+The first 8 cubes (NUM_CUBES_IN_CORNERS=8) are placed at the 8 corners of the
+bounding box (axis-aligned). Remaining cubes are scored as provided.
+"""
+import numpy as np
+
+NUM_CUBES_IN_CORNERS = 8
+
+
+def _rotation_matrix(rx, ry, rz):
+    rx, ry, rz = np.deg2rad([rx, ry, rz])
+    cos_x, sin_x = np.cos(rx), np.sin(rx)
+    cos_y, sin_y = np.cos(ry), np.sin(ry)
+    cos_z, sin_z = np.cos(rz), np.sin(rz)
+    Rx = np.array([[1, 0, 0], [0, cos_x, -sin_x], [0, sin_x, cos_x]])
+    Ry = np.array([[cos_y, 0, sin_y], [0, 1, 0], [-sin_y, 0, cos_y]])
+    Rz = np.array([[cos_z, -sin_z, 0], [sin_z, cos_z, 0], [0, 0, 1]])
+    return Rz @ Ry @ Rx
+
+
+def _get_vertices(center, rot_mat):
+    h = 0.5
+    local = np.array([
+        [-h, -h, -h], [-h, -h, h], [-h, h, -h], [-h, h, h],
+        [h, -h, -h], [h, -h, h], [h, h, -h], [h, h, h],
+    ])
+    return (local @ rot_mat.T) + center
+
+
+def _get_axes(rot_mat):
+    return [rot_mat[:, j] for j in range(3)]
+
+
+def _project(verts, axis):
+    norm = np.linalg.norm(axis)
+    if norm < 1e-9:
+        return 0.0, 0.0
+    axis = axis / norm
+    p = verts @ axis
+    return float(p.min()), float(p.max())
+
+
+def _separated_by_axis(v1, v2, axes):
+    for ax in axes:
+        mn1, mx1 = _project(v1, ax)
+        mn2, mx2 = _project(v2, ax)
+        if mx1 < mn2 - 1e-9 or mx2 < mn1 - 1e-9:
+            return True
+    return False
+
+
+def _intersects(verts1, axes1, verts2, axes2):
+    sat_axes = list(axes1) + list(axes2)
+    for a1 in axes1:
+        for a2 in axes2:
+            cross = np.cross(a1, a2)
+            if np.linalg.norm(cross) > 1e-6:
+                sat_axes.append(cross)
+    return not _separated_by_axis(verts1, verts2, sat_axes)
+
+
+def _bounding_box(all_verts_list):
+    all_verts = np.vstack(all_verts_list)
+    min_coords = np.min(all_verts, axis=0)
+    max_coords = np.max(all_verts, axis=0)
+    side = float(np.max(max_coords - min_coords))
+    return side, min_coords, max_coords
+
+
+def evaluate(output: object, n: int = 11,
+             intersection_penalty_factor: float = 100.0, **kwargs) -> dict:
+    """Score a candidate cube packing configuration.
+
+    Parameters
+    ----------
+    output : array-like of shape (n, 6)
+        Each row is [cx, cy, cz, rx_deg, ry_deg, rz_deg].
+    n : int
+        Expected number of cubes (default 11).
+    intersection_penalty_factor : float
+        Penalty per intersecting pair (default 100.0).
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+        score = -final_side_length - intersection_count * penalty.
+    """
+    try:
+        arr = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": -1_000_002.0, "valid": False, "error": str(exc), "metrics": {}}
+    if arr.ndim != 2 or arr.shape != (n, 6):
+        return {"score": -1_000_000.0, "valid": False,
+                "error": f"Expected ({n}, 6), got {arr.shape}", "metrics": {}}
+
+    if not np.all(np.isfinite(arr)):
+        return {"score": -1_000_002.0, "valid": False,
+                "error": "Non-finite values in input", "metrics": {}}
+
+    # Build working copy of placements
+    placements = arr.tolist()
+
+    # Compute initial bounding box from all cubes as provided
+    init_verts = [
+        _get_vertices(np.array(placements[i][:3]),
+                      _rotation_matrix(*placements[i][3:]))
+        for i in range(n)
+    ]
+    _, min_b, max_b = _bounding_box(init_verts)
+
+    # Place the first NUM_CUBES_IN_CORNERS cubes at the corners (axis-aligned)
+    num_corner_cubes = min(n, NUM_CUBES_IN_CORNERS)
+    if num_corner_cubes > 0:
+        corner_centers = [
+            [min_b[0] + 0.5, min_b[1] + 0.5, min_b[2] + 0.5],
+            [min_b[0] + 0.5, min_b[1] + 0.5, max_b[2] - 0.5],
+            [min_b[0] + 0.5, max_b[1] - 0.5, min_b[2] + 0.5],
+            [min_b[0] + 0.5, max_b[1] - 0.5, max_b[2] - 0.5],
+            [max_b[0] - 0.5, min_b[1] + 0.5, min_b[2] + 0.5],
+            [max_b[0] - 0.5, min_b[1] + 0.5, max_b[2] - 0.5],
+            [max_b[0] - 0.5, max_b[1] - 0.5, min_b[2] + 0.5],
+            [max_b[0] - 0.5, max_b[1] - 0.5, max_b[2] - 0.5],
+        ]
+        for i in range(num_corner_cubes):
+            placements[i][:3] = corner_centers[i]
+            placements[i][3:] = [0.0, 0.0, 0.0]
+
+    # Build final geometry
+    rot_mats = [_rotation_matrix(*placements[i][3:]) for i in range(n)]
+    all_verts = [
+        _get_vertices(np.array(placements[i][:3]), rot_mats[i])
+        for i in range(n)
+    ]
+    all_axes = [_get_axes(rot_mats[i]) for i in range(n)]
+
+    final_side, _, _ = _bounding_box(all_verts)
+
+    # Count intersections
+    intersection_count = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _intersects(all_verts[i], all_axes[i], all_verts[j], all_axes[j]):
+                intersection_count += 1
+
+    score = -final_side - intersection_count * intersection_penalty_factor
+    valid = intersection_count == 0
+    error = "" if valid else f"{intersection_count} pair(s) of cubes intersect"
+
+    return {"score": float(score), "valid": valid, "error": error,
+            "metrics": {"bounding_box_side": float(final_side),
+                        "intersection_count": intersection_count}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/spherical_t_design_n24_t7/evaluator.py ===
+"""Evaluator for the Spherical t-design problem (n=24, t=7).
+
+Matches spherical_t_designs.ipynb Cell 1: calculate_design_score.
+
+Score = -total_error where total_error = sum_k dim_k * sum_{ij} C_k(p_i·p_j) / denom_k
+"""
+import numpy as np
+
+try:
+    from scipy.special import gegenbauer, eval_gegenbauer
+    from scipy.special import comb as binom
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+
+def _get_dim_k(k: int, d: int) -> float:
+    """Dimension of space of spherical harmonics of degree k on S^d."""
+    return binom(d + k, k) - binom(d + k - 2, k - 2)
+
+
+def evaluate(output: object, n: int = 24, t: int = 7, d: int = 2, **kwargs) -> dict:
+    """Score a candidate spherical t-design.
+
+    Parameters
+    ----------
+    output : array-like of shape (n, d+1)
+        Points on the unit sphere S^d.
+    n, t, d : int
+        Number of points, design degree, sphere dimension (S^d in R^{d+1}).
+
+    Returns
+    -------
+    dict with keys: score, valid, error, metrics.
+        score = -total_error (0 is perfect design, negative otherwise).
+    """
+    if not HAS_SCIPY:
+        return {"score": 0.0, "valid": False, "error": "scipy required", "metrics": {}}
+    try:
+        pts = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+    if pts.ndim != 2 or pts.shape != (n, d + 1):
+        return {"score": 0.0, "valid": False,
+                "error": f"Expected ({n}, {d+1}), got {pts.shape}", "metrics": {}}
+
+    if np.any(np.isnan(pts)) or np.any(np.isinf(pts)):
+        return {"score": 0.0, "valid": False, "error": "Non-finite values", "metrics": {}}
+
+    # Normalize to unit sphere
+    norms = np.linalg.norm(pts, axis=1, keepdims=True)
+    if np.any(norms < 1e-9):
+        return {"score": 0.0, "valid": False, "error": "Some points near origin", "metrics": {}}
+    pts = pts / norms
+
+    dot_products = np.clip(pts @ pts.T, -1.0, 1.0)
+
+    total_error = 0.0
+    errors_by_degree = {}
+
+    for k in range(1, t + 1):
+        dim_k = _get_dim_k(k, d)
+        if abs(dim_k) < 1e-9:
+            continue
+
+        # Gegenbauer polynomial with lambda = (d-1)/2
+        lam = (d - 1) / 2.0
+        gegen_poly = gegenbauer(k, lam)
+
+        # Denominator C_k(1) = binom(k + d - 2, k)
+        denom = binom(k + d - 2, k)
+        if abs(denom) < 1e-9:
+            continue
+
+        poly_vals = gegen_poly(dot_products)
+        error_k = float(np.sum(poly_vals))
+        errors_by_degree[k] = error_k
+        total_error += dim_k * error_k / denom
+
+    score = -total_error
+    return {"score": float(score), "valid": True, "error": "",
+            "metrics": {"total_error": total_error,
+                        "errors_by_degree": errors_by_degree}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/tammes_n14/evaluator.py ===
+"""Evaluator for the Tammes problem with n=14 points."""
+import numpy as np
+
+
+def evaluate(output: object, n: int = 14, **kwargs) -> dict:
+    try:
+        pts = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+    if pts.ndim != 2 or pts.shape != (n, 3):
+        return {"score": 0.0, "valid": False, "error": f"Expected shape ({n}, 3), got {pts.shape}", "metrics": {}}
+    norms = np.linalg.norm(pts, axis=1, keepdims=True)
+    if np.any(norms < 1e-10):
+        return {"score": 0.0, "valid": False, "error": "Some points are near the origin", "metrics": {}}
+    pts = pts / norms
+    diff = pts[:, None, :] - pts[None, :, :]
+    dist = np.sqrt((diff ** 2).sum(axis=-1))
+    np.fill_diagonal(dist, np.inf)
+    min_dist = float(dist.min())
+    return {"score": min_dist, "valid": True, "error": "", "metrics": {"min_pairwise_distance": min_dist}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/tammes_n24/evaluator.py ===
+"""Evaluator for the Tammes problem with n=24 points."""
+import numpy as np
+
+
+def evaluate(output: object, n: int = 24, **kwargs) -> dict:
+    try:
+        pts = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+    if pts.ndim != 2 or pts.shape != (n, 3):
+        return {"score": 0.0, "valid": False, "error": f"Expected shape ({n}, 3), got {pts.shape}", "metrics": {}}
+    norms = np.linalg.norm(pts, axis=1, keepdims=True)
+    if np.any(norms < 1e-10):
+        return {"score": 0.0, "valid": False, "error": "Some points are near the origin", "metrics": {}}
+    pts = pts / norms
+    diff = pts[:, None, :] - pts[None, :, :]
+    dist = np.sqrt((diff ** 2).sum(axis=-1))
+    np.fill_diagonal(dist, np.inf)
+    min_dist = float(dist.min())
+    return {"score": min_dist, "valid": True, "error": "", "metrics": {"min_pairwise_distance": min_dist}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/geometry/thomson_n32/evaluator.py ===
+"""Evaluator for the Thomson problem with n=32 points on the unit sphere."""
+import numpy as np
+
+
+def evaluate(output: object, n: int = 32, **kwargs) -> dict:
+    try:
+        pts = np.asarray(output, dtype=float)
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": f"Cannot convert output to array: {exc}", "metrics": {}}
+    if pts.ndim != 2 or pts.shape != (n, 3):
+        return {"score": 0.0, "valid": False, "error": f"Expected shape ({n}, 3), got {pts.shape}", "metrics": {}}
+    norms = np.linalg.norm(pts, axis=1, keepdims=True)
+    if np.any(norms < 1e-10):
+        return {"score": 0.0, "valid": False, "error": "Some points are near the origin", "metrics": {}}
+    pts = pts / norms
+    diff = pts[:, None, :] - pts[None, :, :]
+    dist = np.sqrt((diff ** 2).sum(axis=-1))
+    np.fill_diagonal(dist, np.inf)
+    # Thomson energy: sum of 1/r_ij for all pairs i < j
+    energy = float(np.sum(1.0 / dist) / 2.0)
+    score = -energy
+    return {"score": score, "valid": True, "error": "", "metrics": {"energy": energy}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/number_theory/difference_bases/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the difference bases problem.
+
+The candidate solve() function returns a list (or array) of non-negative
+integers B such that every positive integer up to k can be expressed as a
+difference b_i - b_j (b_i > b_j) for some b_i, b_j in B.
+
+Score = k / n²  where n = |B| and k is the largest integer consecutively
+covered by differences of B.  Higher scores mean better efficiency.
+
+The theoretical bound (Rohrbach) says n²/k → 2 as k → ∞, so k/n² ≤ 0.5
+asymptotically.
+"""
+
+import numpy as np
+
+
+def evaluate(output, **kwargs) -> dict:
+    """Score a difference-basis candidate.
+
+    Parameters
+    ----------
+    output:
+        An iterable of non-negative integers forming the candidate set B.
+        0 is added automatically if not present.
+
+    Returns
+    -------
+    dict with keys: score (float), valid (bool), error (str), metrics (dict).
+    """
+    try:
+        # Convert to a sorted list of unique non-negative ints
+        raw: list[int] = []
+        for x in output:
+            try:
+                val = int(x)
+            except (TypeError, ValueError) as exc:
+                return {"score": 0.0, "valid": False,
+                        "error": f"Invalid element {x!r}: {exc}", "metrics": {}}
+            if np.isnan(float(val)) or np.isinf(float(val)):
+                return {"score": 0.0, "valid": False,
+                        "error": f"Non-finite element: {x}", "metrics": {}}
+            raw.append(val)
+
+        b_set = set(raw)
+
+        if not b_set:
+            return {"score": 0.0, "valid": False,
+                    "error": "Empty set", "metrics": {}}
+
+        # Ensure 0 is in the set (matches notebook Cell 1 which adds 0)
+        b_set.add(0)
+
+        b_list = sorted(b_set)
+
+        if min(b_list) < 0:
+            return {"score": 0.0, "valid": False,
+                    "error": "Set contains negative integers", "metrics": {}}
+
+        if len(b_list) > 10_000:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Set too large: {len(b_list)} > 10,000",
+                    "metrics": {}}
+
+        n = len(b_list)
+
+        if n < 2:
+            return {"score": 0.0, "valid": True,
+                    "error": "Need at least 2 elements to form differences",
+                    "metrics": {"n": n, "k": 0, "score": 0.0}}
+
+        # Compute all positive pairwise differences
+        differences: set[int] = set()
+        for i in range(n):
+            for j in range(i + 1, n):
+                differences.add(b_list[j] - b_list[i])
+
+        if not differences:
+            return {"score": 0.0, "valid": True,
+                    "error": "No differences computed", "metrics": {"n": n, "k": 0}}
+
+        max_diff = max(differences)
+
+        # Find k = largest integer such that {1, 2, ..., k} ⊆ differences
+        k = 0
+        for v in range(1, max_diff + 2):
+            if v not in differences:
+                k = v - 1
+                break
+        else:
+            k = max_diff
+
+        if k == 0:
+            # 1 is not representable as a difference
+            return {
+                "score": 0.0,
+                "valid": True,
+                "error": "Difference 1 is not achievable",
+                "metrics": {"n": n, "k": 0, "score": 0.0},
+            }
+
+        score = float(k) / float(n * n)
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "n": n,
+                "k": k,
+                "n_sq_over_k": float(n * n) / float(k),
+                "score": score,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/number_theory/finite_field_kakeya/evaluator.py ===
+"""Evaluator for the Finite Field Kakeya Problem.
+
+A Kakeya set in F_p^d is a subset K ⊆ F_p^d that contains a complete line in
+every direction.  Formally, for every non-zero direction v ∈ F_p^d (considered
+up to scalar multiples), there exists a base point x ∈ K such that the line
+  {x + t·v  mod p  :  t ∈ F_p}
+is entirely contained in K.
+
+The goal is to minimise |K|.  Score = -(|K| / |reference|) where the reference
+is the Saraf–Sudan construction size; higher (less negative) is better.
+
+solve() must return a 2-D integer array of shape (k, d) with entries in {0,…,p-1}.
+
+Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0).
+"""
+
+import itertools
+
+import numpy as np
+
+
+# ---------------------------------------------------------------------------
+# Saraf–Sudan reference construction
+# ---------------------------------------------------------------------------
+
+def _saraf_sudan_size(p: int, d: int) -> int:
+    """Size of the Saraf–Sudan / Dvir reference construction for odd prime p."""
+    if p % 2 == 0 or p < 2:
+        # Fallback: full space (trivially a Kakeya set)
+        return p ** d
+
+    squares = {pow(i, 2, p) for i in range(p)}
+    final_set: set = set()
+
+    for beta in range(p):
+        beta_sq = (beta * beta) % p
+        for s_tuple in itertools.product(squares, repeat=d - 1):
+            point = tuple((s - beta_sq) % p for s in s_tuple) + (beta,)
+            final_set.add(point)
+
+    # Add the hyperplane F_p^(d-1) × {0}
+    for coords in itertools.product(range(p), repeat=d - 1):
+        final_set.add(coords + (0,))
+
+    return len(final_set)
+
+
+# ---------------------------------------------------------------------------
+# Kakeya validity check
+# ---------------------------------------------------------------------------
+
+def _canonical_directions(p: int, d: int):
+    """Yield all canonical direction vectors in F_p^d.
+
+    A vector is canonical if its first non-zero coordinate equals 1.
+    This gives exactly (p^d - 1)/(p - 1) = p^(d-1) + … + 1 directions.
+    """
+    for v in itertools.product(range(p), repeat=d):
+        if all(x == 0 for x in v):
+            continue
+        first_nonzero = next(x for x in v if x != 0)
+        if first_nonzero == 1:
+            yield np.array(v, dtype=np.int64)
+
+
+def _is_valid_kakeya(construction: np.ndarray, p: int, d: int) -> bool:
+    """Return True iff *construction* is a valid Kakeya set in F_p^d."""
+    pt_set = set(map(tuple, construction))
+
+    for v in _canonical_directions(p, d):
+        found = False
+        for x in construction:
+            line = {tuple((x + t * v) % p) for t in range(p)}
+            if line <= pt_set:
+                found = True
+                break
+        if not found:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Public entry-point
+# ---------------------------------------------------------------------------
+
+def evaluate(output, p: int = 3, d: int = 3, **kwargs) -> dict:
+    """Score a candidate Kakeya set construction.
+
+    Parameters
+    ----------
+    output:
+        Integer array of shape (k, d) with entries in {0, …, p-1}.
+    p:
+        Prime order of the finite field.
+    d:
+        Dimension of the vector space.
+
+    Returns
+    -------
+    dict
+        score   : -(|K| / reference_size); higher (less negative) is better.
+        valid   : True iff the set is a valid Kakeya set.
+        error   : description of the first error, or ''.
+        metrics : dict with set_size, reference_size, is_kakeya.
+    """
+    try:
+        try:
+            construction = np.asarray(output, dtype=np.int64)
+        except Exception as exc:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Cannot convert output to array: {exc}",
+                    "metrics": {}}
+
+        if construction.ndim != 2 or construction.shape[1] != d:
+            return {"score": 0.0, "valid": False,
+                    "error": (f"Expected shape (k, {d}), "
+                              f"got {construction.shape}"),
+                    "metrics": {}}
+
+        if construction.size == 0:
+            return {"score": 0.0, "valid": False,
+                    "error": "Empty construction", "metrics": {}}
+
+        if np.any(construction < 0) or np.any(construction >= p):
+            return {"score": 0.0, "valid": False,
+                    "error": f"All entries must be in {{0, …, {p-1}}}",
+                    "metrics": {}}
+
+        # Deduplicate
+        unique_pts = np.unique(construction, axis=0)
+        k = unique_pts.shape[0]
+
+        ref_size = _saraf_sudan_size(p, d)
+        if ref_size == 0:
+            return {"score": 0.0, "valid": False,
+                    "error": "Reference size is 0 (invalid p or d)",
+                    "metrics": {}}
+
+        is_kakeya = _is_valid_kakeya(unique_pts, p, d)
+
+        if not is_kakeya:
+            return {
+                "score": float(-1e6),
+                "valid": False,
+                "error": "Construction is not a valid Kakeya set",
+                "metrics": {
+                    "set_size": k,
+                    "reference_size": ref_size,
+                    "is_kakeya": False,
+                },
+            }
+
+        score = -float(k) / float(ref_size)
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "set_size": k,
+                "reference_size": ref_size,
+                "normalized_score": score,
+                "is_kakeya": True,
+            },
+        }
+
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/number_theory/finite_field_sum_product_problem/evaluator.py ===
+# Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
+"""Evaluator for the Finite Field Sum-Product Problem.
+
+The candidate's solve() function must return a 1-D integer NumPy array of
+shape (k,) where k = floor(sqrt(p)), containing exactly k distinct elements
+from {0, 1, …, p−1} in the finite field F_p.
+
+The objective is to MINIMISE  max(|X+X|, |X·X|)  where
+    X + X = {(a + b) mod p : a, b ∈ X}
+    X · X = {(a * b) mod p : a, b ∈ X}
+
+Score = max(|X+X|, |X·X|).  Lower is better.
+
+This file is standalone — it does NOT import from autoresearch_problems.
+"""
+
+import math
+import numpy as np
+
+_DEFAULT_P = 1009  # prime ≡ 1 mod 4
+
+
+def _sum_prod_sizes(x: np.ndarray, p: int):
+    """Return (|X+X|, |X·X|) for set X ⊆ F_p.
+
+    Parameters
+    ----------
+    x : 1-D int64 array of distinct elements in {0,…,p-1}
+    p : prime
+    """
+    n = len(x)
+    # Compute all pairwise sums and products
+    i_idx, j_idx = np.meshgrid(np.arange(n), np.arange(n), indexing="ij")
+    sums = (x[i_idx] + x[j_idx]) % p
+    prods = (x[i_idx] * x[j_idx]) % p
+    sum_size = len(np.unique(sums))
+    prod_size = len(np.unique(prods))
+    return sum_size, prod_size
+
+
+def evaluate(output, p: int = _DEFAULT_P, **kwargs) -> dict:
+    """Score a candidate set X ⊆ F_p.
+
+    Parameters
+    ----------
+    output:
+        A 1-D integer array-like of length k = floor(sqrt(p)) with distinct
+        values in {0, …, p−1}.
+    p:
+        Prime order of the field.
+
+    Returns
+    -------
+    dict
+        score   : max(|X+X|, |X·X|)  – **lower is better**
+        valid   : True iff the array has correct size, no duplicates, in F_p
+        error   : "" on success, description of first problem otherwise
+        metrics : dict with sum_set_size, prod_set_size, set_size
+    """
+    try:
+        target_size = int(math.sqrt(p))
+
+        try:
+            arr = np.asarray(output, dtype=np.int64).ravel()
+        except Exception as exc:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"Cannot convert to int64 array: {exc}",
+                "metrics": {},
+            }
+
+        if arr.shape[0] != target_size:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"Expected size {target_size}, got {arr.shape[0]}",
+                "metrics": {},
+            }
+
+        if arr.min() < 0 or arr.max() >= p:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"Elements must be in {{0, …, {p-1}}}",
+                "metrics": {},
+            }
+
+        if len(np.unique(arr)) != target_size:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": "Construction contains duplicate elements",
+                "metrics": {},
+            }
+
+        sum_size, prod_size = _sum_prod_sizes(arr, p)
+        score = float(max(sum_size, prod_size))
+
+        return {
+            "score": score,
+            "valid": True,
+            "error": "",
+            "metrics": {
+                "sum_set_size": sum_size,
+                "prod_set_size": prod_size,
+                "set_size": target_size,
+            },
+        }
+
+    except Exception as exc:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": f"Unexpected error: {exc}",
+            "metrics": {},
+        }
+
+=== /home/runner/work/autoresearch-problems/autoresearch-problems/src/autoresearch_problems/problems/number_theory/prime_number_theorem/evaluator.py ===
+"""Evaluator for the Prime Number Theorem partial function problem."""
+import numpy as np
+
+
+def evaluate(output: object, num_samples: int = 100000, **kwargs) -> dict:
+    try:
+        if not isinstance(output, dict):
+            return {"score": 0.0, "valid": False,
+                    "error": "Output must be a dict mapping int -> float", "metrics": {}}
+        partial_fn = {int(k): float(v) for k, v in output.items() if int(k) > 0}
+    except Exception as exc:
+        return {"score": 0.0, "valid": False, "error": str(exc), "metrics": {}}
+
+    if not partial_fn:
+        return {"score": 0.0, "valid": False, "error": "Empty dict", "metrics": {}}
+
+    # Clip extreme values for stability
+    clipped = {k: float(np.clip(v, -10, 10)) for k, v in partial_fn.items()}
+
+    # Normalize: adjust f(1) so the multiplicative constraint sum(f(k)/k)=0 holds
+    total = sum(v / k for k, v in clipped.items())
+    clipped[1] = clipped.get(1, 0.0) - total
+
+    keys = np.array(list(clipped.keys()), dtype=np.float64)
+    vals = np.array(list(clipped.values()), dtype=np.float64)
+
+    max_key = np.max(keys)
+    upper = 10 * max_key
+
+    rng = np.random.default_rng(42)
+    for _ in range(num_samples):
+        x = rng.uniform(1, upper)
+        x_sum = float(np.sum(vals * np.floor(x / keys)))
+        if x_sum > 1.0001:
+            return {"score": float(-np.inf), "valid": False,
+                    "error": f"Constraint violated at x={x:.2f} (sum={x_sum:.4f})",
+                    "metrics": {}}
+
+    a_value = float(-np.sum(vals * np.log(keys) / keys))
+    return {"score": a_value, "valid": True, "error": "",
+            "metrics": {"a_value": a_value, "num_keys": len(clipped)}}
+
