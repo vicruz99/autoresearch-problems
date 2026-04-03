@@ -15,7 +15,6 @@ autoresearch_problems.  The only dependency is numpy.
 
 import numpy as np
 
-
 def evaluate(output: object, num_intervals: int = 600, **kwargs) -> dict:
     """Score a candidate step function for the first autocorrelation inequality.
 
