@@ -15,15 +15,18 @@ import numpy as np
 def _union_volume_mc(x_pos: np.ndarray, y_pos: np.ndarray,
                      n: int, num_samples: int = 200_000,
                      seed: int = 42) -> float:
-    """Monte Carlo estimate of the union volume of n^2 tubes."""
+    """Monte Carlo estimate of the union volume of n^2 tubes.
+
+    Matches the notebook's get_score which samples in [0, 2.5] x [0, 2.5] x [0, 1].
+    """
     rng = np.random.default_rng(seed)
     inv_n = 1.0 / n
 
-    # Sample points in [0, 1+1/n]^2 x [0, 1]
-    extent = 1.0 + inv_n
+    # Sample points in [0, 2.5] x [0, 2.5] x [0, 1] (matches notebook)
+    xy_extent = 2.5
     pts = rng.uniform(0, 1, size=(num_samples, 3))
-    pts[:, 0] *= extent
-    pts[:, 1] *= extent
+    pts[:, 0] *= xy_extent
+    pts[:, 1] *= xy_extent
 
     a, b, c = pts[:, 0], pts[:, 1], pts[:, 2]
 
@@ -42,7 +45,8 @@ def _union_volume_mc(x_pos: np.ndarray, y_pos: np.ndarray,
         inside = (x_min <= a) & (a <= x_max) & (y_min <= b) & (b <= y_max)
         in_union |= inside
 
-    vol = float(np.mean(in_union)) * extent * extent * 1.0
+    # Volume = fraction_in_union * bounding_box_volume
+    vol = float(np.mean(in_union)) * xy_extent * xy_extent * 1.0
     return vol
 
 

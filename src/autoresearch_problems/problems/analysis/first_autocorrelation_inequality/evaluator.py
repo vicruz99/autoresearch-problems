@@ -67,7 +67,8 @@ def evaluate(output: object, num_intervals: int = 600, **kwargs) -> dict:
                 "metrics": {},
             }
 
-    f_values = np.abs(np.array(sequence, dtype=np.float64))
+    f_values = np.array(sequence, dtype=np.float64)
+    f_values = np.clip(f_values, 0.0, 1000.0)  # match notebook: max(0, min(1000, x))
     if np.sum(f_values) < 1e-6:
         return {
             "score": float("inf"),

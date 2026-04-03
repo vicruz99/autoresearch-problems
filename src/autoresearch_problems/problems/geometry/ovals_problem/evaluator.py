@@ -43,9 +43,9 @@ def evaluate(output: object, n: int = 100, **kwargs) -> dict:
             return {"score": 0.0, "valid": False,
                     "error": "Curve speed is degenerate (near zero)", "metrics": {}}
 
-        phi_l2, _ = scipy.integrate.quad(
+        phi_l2_raw, _ = scipy.integrate.quad(
             lambda t: float(phi_fn(t)) ** 2, 0, 2 * np.pi, limit=500)
-        if phi_l2 < 1e-6:
+        if phi_l2_raw < 1e-6:
             return {"score": 0.0, "valid": False,
                     "error": "phi is degenerate (near zero L2 norm)", "metrics": {}}
 
@@ -59,16 +59,40 @@ def evaluate(output: object, n: int = 100, **kwargs) -> dict:
             return {"score": 0.0, "valid": False,
                     "error": "Curve is not convex (signed curvature is negative)", "metrics": {}}
 
+        def spd(t):
+            xp = float(x_prime(t))
+            yp = float(y_prime(t))
+            return np.sqrt(xp ** 2 + yp ** 2)
+
         def kappa(t):
             xp = float(x_prime(t))
             yp = float(y_prime(t))
             xpp = float(x_double_prime(t))
             ypp = float(y_double_prime(t))
-            spd = np.sqrt(xp ** 2 + yp ** 2)
-            return abs(xp * ypp - xpp * yp) / spd ** 3
+            s = np.sqrt(xp ** 2 + yp ** 2)
+            return abs(xp * ypp - xpp * yp) / s ** 3
+
+        # Rescale so arc-length = 2*pi (matches notebook's rescaling step)
+        arc_length, _ = scipy.integrate.quad(spd, 0, 2 * np.pi, limit=500)
+        if arc_length < 1e-6:
+            return {"score": 0.0, "valid": False,
+                    "error": "Curve has near-zero arc length", "metrics": {}}
+        scale = 2 * np.pi / arc_length
+
+        # After rescaling: new_spd(t) = scale * spd(t), new_kappa(t) = kappa(t) / scale
+        # Rayleigh quotient in arc-length: Q = num / denom
+        # num = ∫ (phi'(t)^2 / new_spd(t) + new_kappa(t)^2 * phi(t)^2 * new_spd(t)) dt
+        # denom = ∫ phi(t)^2 * new_spd(t) dt
+        phi_l2, _ = scipy.integrate.quad(
+            lambda t: float(phi_fn(t)) ** 2 * (scale * spd(t)),
+            0, 2 * np.pi, limit=500)
+        if phi_l2 < 1e-6:
+            return {"score": 0.0, "valid": False,
+                    "error": "phi is degenerate (near zero weighted L2 norm)", "metrics": {}}
 
         numerator, _ = scipy.integrate.quad(
-            lambda t: float(phi_prime(t)) ** 2 + (kappa(t) * float(phi_fn(t))) ** 2,
+            lambda t: (float(phi_prime(t)) ** 2 / (scale * spd(t))
+                       + (kappa(t) / scale) ** 2 * float(phi_fn(t)) ** 2 * (scale * spd(t))),
             0, 2 * np.pi, limit=500)
 
         rayleigh = numerator / phi_l2
