@@ -1,12 +1,15 @@
 name: finite_field_sum_product_problem
 category: number_theory
 description: >
-  Construct a set X ⊆ F_p of size ⌊√p⌋ that minimises max(|X+X|, |X·X|),
+  Construct sets X ⊆ F_p of size ⌊√p⌋ that minimise max(|X+X|, |X·X|),
   challenging the sum-product conjecture over finite fields.
   Here X+X = {x+y mod p : x,y ∈ X} and X·X = {x·y mod p : x,y ∈ X}.
-  Score = max(|X+X|, |X·X|).  Lower is better.
-  An arithmetic progression gives |X+X| = 2k−1 but large |X·X|.
-  AlphaEvolve found constructions achieving max ≈ k^1.5 using AP ∩ GP.
+  Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
+  construction is evaluated across multiple primes p.  For each prime the
+  normalised score is  log(max(|X+X|, |X·X|)) / log(|X|).  The final score
+  is the average of these normalised values.  Lower is better.
+  An arithmetic progression gives |X+X| = 2k−1 (ratio ~1) but large |X·X|.
+  AlphaEvolve found constructions achieving average ratio ≈ 1.5 using AP∩GP.
 
 output_type: numpy_array
 
@@ -16,11 +19,11 @@ evaluator_dependencies:
   - "numpy>=1.24"
 
 parameters:
-  p: 1009       # prime ≡ 1 mod 4, floor(sqrt(1009))=31
+  primes: [101, 257, 1009]   # primes ≡ 1 mod 4
 
 timeout_seconds: 120.0
 maximize: false
-known_best_score: 120.0   # AlphaEvolve achieved ~k^1.4 ≈ 31^1.4 ≈ 120 for p=1009; AP∩GP baseline gives ~k^1.5 ≈ 172
+known_best_score: null  # Best known normalised ratio; exact optimum is open
 
 source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
 tags:

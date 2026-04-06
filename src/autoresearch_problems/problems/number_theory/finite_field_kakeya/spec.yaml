@@ -1,12 +1,14 @@
 name: finite_field_kakeya
 category: number_theory
 description: >
-  Find a minimum-size Kakeya set in F_p^d (the d-dimensional vector space over
-  the finite field of prime order p). A Kakeya set K must contain a complete
-  line in every direction: for every non-zero v in F_p^d there exists x in K
-  such that {x + t*v mod p : t in F_p} is a subset of K. Minimise |K|.
-  Score = -(|K| / |reference|) where reference is the Saraf-Sudan construction
-  size; higher (less negative or closer to -1) is better.
+  Find minimum-size Kakeya sets in F_p^d for multiple primes p.  A Kakeya set K
+  must contain a complete line in every direction: for every non-zero v in F_p^d
+  there exists x in K such that {x + t*v mod p : t in F_p} ⊆ K.
+  Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
+  construction is evaluated on several primes and the final score is the average
+  normalised size  -(|K(p)| / reference_size(p, d))  over all tested primes.
+  Higher (less negative) is better.  solve(p, d) must return a 2-D integer array
+  of shape (k, d); the evaluator receives a dict {p: array} from solve(d, primes).
 
 output_type: numpy_array
 function_name: solve
@@ -15,10 +17,10 @@ evaluator_dependencies:
   - "numpy>=1.24"
 
 parameters:
-  p: 3
   d: 3
+  primes: [3, 5, 7, 11]
 
-timeout_seconds: 60.0
+timeout_seconds: 120.0
 maximize: true
 known_best_score: null  # Best known constructions beat the Saraf-Sudan reference; exact optimum is open
 

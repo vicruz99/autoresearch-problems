@@ -6,10 +6,18 @@ up to scalar multiples), there exists a base point x ∈ K such that the line
   {x + t·v  mod p  :  t ∈ F_p}
 is entirely contained in K.
 
-The goal is to minimise |K|.  Score = -(|K| / |reference|) where the reference
-is the Saraf–Sudan construction size; higher (less negative) is better.
+The goal is to minimise |K|.
 
-solve() must return a 2-D integer array of shape (k, d) with entries in {0,…,p-1}.
+Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
+construction is evaluated across multiple primes p for a fixed dimension d,
+and the final score is the average normalised size:
+  score = average over p of  -(|K(p)| / reference_size(p, d))
+Higher (less negative) is better.
+
+solve() must accept (p, d) and return a 2-D integer array of shape (k, d) with
+entries in {0,…,p-1} for the given prime p.  The evaluator calls solve for each
+prime independently; the output passed to evaluate() must be a dict
+{p: np.ndarray} mapping each prime to its construction.
 
 Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0).
 """
@@ -18,6 +26,34 @@ import itertools
 
 import numpy as np
 
+_DEFAULT_PRIMES_BY_DIM = {
+    2: [3, 5, 7, 11, 13],
+    3: [3, 5, 7, 11],
+    4: [3, 5, 7],
+    5: [3, 5],
+}
+_DEFAULT_PRIMES_FALLBACK = [3, 5, 7]
+
+
+# ---------------------------------------------------------------------------
+# Primality check
+# ---------------------------------------------------------------------------
+
+def _is_prime(n: int) -> bool:
+    """Return True iff n is a prime number."""
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    i = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
+
 
 # ---------------------------------------------------------------------------
 # Saraf–Sudan reference construction
@@ -25,8 +61,7 @@ import numpy as np
 
 def _saraf_sudan_size(p: int, d: int) -> int:
     """Size of the Saraf–Sudan / Dvir reference construction for odd prime p."""
-    if p % 2 == 0 or p < 2:
-        # Fallback: full space (trivially a Kakeya set)
+    if p == 2:
         return p ** d
 
     squares = {pow(i, 2, p) for i in range(p)}
@@ -38,7 +73,6 @@ def _saraf_sudan_size(p: int, d: int) -> int:
             point = tuple((s - beta_sq) % p for s in s_tuple) + (beta,)
             final_set.add(point)
 
-    # Add the hyperplane F_p^(d-1) × {0}
     for coords in itertools.product(range(p), repeat=d - 1):
         final_set.add(coords + (0,))
 
@@ -79,87 +113,137 @@ def _is_valid_kakeya(construction: np.ndarray, p: int, d: int) -> bool:
     return True
 
 
+def _evaluate_single(construction_raw, p: int, d: int) -> dict:
+    """Score a single construction for one prime p in dimension d."""
+    try:
+        construction = np.asarray(construction_raw, dtype=np.int64)
+    except Exception as exc:
+        return {"score": None, "error": f"p={p}: cannot convert to array: {exc}"}
+
+    if construction.ndim != 2 or construction.shape[1] != d:
+        return {"score": None,
+                "error": f"p={p}: expected shape (k, {d}), got {construction.shape}"}
+
+    if construction.size == 0:
+        return {"score": None, "error": f"p={p}: empty construction"}
+
+    if np.any(construction < 0) or np.any(construction >= p):
+        return {"score": None,
+                "error": f"p={p}: entries must be in {{0, …, {p - 1}}}"}
+
+    unique_pts = np.unique(construction, axis=0)
+    k = unique_pts.shape[0]
+
+    ref_size = _saraf_sudan_size(p, d)
+    if ref_size == 0:
+        return {"score": None, "error": f"p={p}: reference size is 0"}
+
+    if not _is_valid_kakeya(unique_pts, p, d):
+        return {"score": None,
+                "error": f"p={p}: construction is not a valid Kakeya set",
+                "set_size": k, "reference_size": ref_size}
+
+    norm = -float(k) / float(ref_size)
+    return {"score": norm, "error": "",
+            "set_size": k, "reference_size": ref_size}
+
+
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
 
-def evaluate(output, p: int = 3, d: int = 3, **kwargs) -> dict:
-    """Score a candidate Kakeya set construction.
+def evaluate(output, d: int = 3, primes=None, **kwargs) -> dict:
+    """Score a candidate Kakeya set construction across multiple primes.
+
+    Following the AlphaEvolve paper, the construction is evaluated on several
+    primes p for dimension d.  The final score is the average normalised size
+    -(|K(p)| / reference_size(p, d)) over all tested primes.
 
     Parameters
     ----------
     output:
-        Integer array of shape (k, d) with entries in {0, …, p-1}.
-    p:
-        Prime order of the finite field.
+        A dict mapping each prime p (int) to a 2-D integer array of shape
+        (k, d) with entries in {0, …, p-1} representing the Kakeya set for
+        that prime.
     d:
-        Dimension of the vector space.
+        Dimension of the vector space (positive integer ≥ 2).
+    primes:
+        List of prime integers to evaluate.  Defaults to a dimension-specific
+        set chosen to keep evaluation tractable.
 
     Returns
     -------
     dict
-        score   : -(|K| / reference_size); higher (less negative) is better.
-        valid   : True iff the set is a valid Kakeya set.
+        score   : average -(|K(p)| / reference_size(p, d)); higher is better.
+        valid   : True iff every prime's construction is a valid Kakeya set.
         error   : description of the first error, or ''.
-        metrics : dict with set_size, reference_size, is_kakeya.
+        metrics : per-prime breakdown plus aggregate statistics.
     """
     try:
-        try:
-            construction = np.asarray(output, dtype=np.int64)
-        except Exception as exc:
+        # --- parameter validation ---
+        if not isinstance(d, int) or d < 1:
             return {"score": 0.0, "valid": False,
-                    "error": f"Cannot convert output to array: {exc}",
+                    "error": f"d must be a positive integer, got {d!r}",
                     "metrics": {}}
 
-        if construction.ndim != 2 or construction.shape[1] != d:
+        if primes is None:
+            primes = _DEFAULT_PRIMES_BY_DIM.get(d, _DEFAULT_PRIMES_FALLBACK)
+
+        primes = list(primes)
+        if not primes:
             return {"score": 0.0, "valid": False,
-                    "error": (f"Expected shape (k, {d}), "
-                              f"got {construction.shape}"),
+                    "error": "primes list is empty", "metrics": {}}
+
+        bad_primes = [p for p in primes if not _is_prime(p)]
+        if bad_primes:
+            return {"score": 0.0, "valid": False,
+                    "error": f"Not prime: {bad_primes}", "metrics": {}}
+
+        # --- validate output format ---
+        if not isinstance(output, dict):
+            return {"score": 0.0, "valid": False,
+                    "error": ("output must be a dict {p: construction_array}; "
+                              f"got {type(output).__name__}"),
                     "metrics": {}}
 
-        if construction.size == 0:
-            return {"score": 0.0, "valid": False,
-                    "error": "Empty construction", "metrics": {}}
+        # --- evaluate each prime ---
+        per_prime: dict = {}
+        scores: list = []
+        errors: list = []
 
-        if np.any(construction < 0) or np.any(construction >= p):
-            return {"score": 0.0, "valid": False,
-                    "error": f"All entries must be in {{0, …, {p-1}}}",
-                    "metrics": {}}
+        for p in primes:
+            if p not in output:
+                errors.append(f"p={p}: missing from output dict")
+                per_prime[p] = {"score": None, "error": f"missing from output"}
+                continue
 
-        # Deduplicate
-        unique_pts = np.unique(construction, axis=0)
-        k = unique_pts.shape[0]
+            result = _evaluate_single(output[p], p, d)
+            per_prime[p] = result
+            if result["score"] is None:
+                errors.append(result["error"])
+            else:
+                scores.append(result["score"])
 
-        ref_size = _saraf_sudan_size(p, d)
-        if ref_size == 0:
-            return {"score": 0.0, "valid": False,
-                    "error": "Reference size is 0 (invalid p or d)",
-                    "metrics": {}}
-
-        is_kakeya = _is_valid_kakeya(unique_pts, p, d)
-
-        if not is_kakeya:
+        if not scores:
             return {
-                "score": float(-1e6),
+                "score": 0.0,
                 "valid": False,
-                "error": "Construction is not a valid Kakeya set",
-                "metrics": {
-                    "set_size": k,
-                    "reference_size": ref_size,
-                    "is_kakeya": False,
-                },
+                "error": "; ".join(errors) if errors else "no valid constructions",
+                "metrics": {"per_prime": per_prime},
             }
 
-        score = -float(k) / float(ref_size)
+        avg_score = sum(scores) / len(scores)
+        all_valid = len(errors) == 0
+
         return {
-            "score": score,
-            "valid": True,
-            "error": "",
+            "score": avg_score,
+            "valid": all_valid,
+            "error": "; ".join(errors) if errors else "",
             "metrics": {
-                "set_size": k,
-                "reference_size": ref_size,
-                "normalized_score": score,
-                "is_kakeya": True,
+                "per_prime": per_prime,
+                "avg_normalized_score": avg_score,
+                "num_valid_primes": len(scores),
+                "num_primes": len(primes),
             },
         }
 
