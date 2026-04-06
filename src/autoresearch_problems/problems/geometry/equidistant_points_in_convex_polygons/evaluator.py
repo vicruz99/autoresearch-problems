@@ -170,6 +170,12 @@ def evaluate(output, num_vertex: int = 10, **kwargs) -> dict:
         error  : description of the first error, or ''.
         metrics: dict with per-vertex scores and additional info.
     """
+    if not (isinstance(num_vertex, int) or (isinstance(num_vertex, float) and num_vertex == int(num_vertex))) or int(num_vertex) < 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"num_vertex must be a positive integer >= 3, got num_vertex={num_vertex}",
+                "metrics": {}}
+    num_vertex = int(num_vertex)
+
     try:
         coords = np.asarray(output, dtype=float)
     except Exception as exc:

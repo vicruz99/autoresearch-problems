@@ -116,6 +116,12 @@ def evaluate(output, n: int = 20, **kwargs) -> dict:
     -------
     dict with keys: score (float), valid (bool), error (str), metrics (dict).
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 3 (need at least 3 nodes for triangles), got n={n}",
+                "metrics": {}}
+    n = int(n)
+
     try:
         try:
             solutions = np.array(output, dtype=float)

@@ -3,6 +3,11 @@ import numpy as np
 
 
 def evaluate(output: object, n: int = 26, **kwargs) -> dict:
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 1, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         arr = np.asarray(output, dtype=float)
     except Exception as exc:

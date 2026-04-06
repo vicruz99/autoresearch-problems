@@ -62,6 +62,15 @@ def evaluate(output, n: int = NUM_POINTS, d: int = DIMENSION, **kwargs) -> dict:
         error  : "" on success, description of first error otherwise
         metrics: dict with min_dist, max_dist, ratio_squared
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 2, got n={n}", "metrics": {}}
+    n = int(n)
+    if int(d) != 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"d must be 2 for this problem, got d={d}", "metrics": {}}
+    d = int(d)
+
     try:
         try:
             points = np.asarray(output, dtype=float)

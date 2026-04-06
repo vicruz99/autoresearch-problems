@@ -32,11 +32,12 @@ def get_score(positions) -> float:
     return -float(np.mean(in_union)) * extent * extent
 
 
-def solve(n: int = 8):
+def solve(cap_n: int = 8, **kwargs):
     """Return positions minimising the 3D union volume.
 
     # EVOLVE-BLOCK-START
     """
+    n = int(cap_n)
     num_tubes = n * n
     best_x = np.random.uniform(0, 1, size=num_tubes)
     best_y = np.random.uniform(0, 1, size=num_tubes)

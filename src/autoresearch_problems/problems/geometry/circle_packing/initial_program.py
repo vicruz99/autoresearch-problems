@@ -3,11 +3,11 @@
 import numpy as np
 
 
-def solve() -> np.ndarray:
-    """Place 26 circles on a near-square grid inside [0, 1]^2."""
-    n = 26
-    cols = int(np.ceil(np.sqrt(n)))   # 6 columns
-    rows = int(np.ceil(n / cols))     # 5 rows
+def solve(n: int = 26, **kwargs) -> np.ndarray:
+    """Place n circles on a near-square grid inside [0, 1]^2."""
+    n = int(n)
+    cols = int(np.ceil(np.sqrt(n)))
+    rows = int(np.ceil(n / cols))
 
     xs = np.linspace(0.0, 1.0, cols)
     ys = np.linspace(0.0, 1.0, rows)

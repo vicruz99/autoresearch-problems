@@ -57,6 +57,21 @@ def evaluate(output, p: float = 1.5, r1: float = 5.0,
     -------
     dict with keys: score (float), valid (bool), error (str), metrics (dict).
     """
+    # Parameter validation
+    if not (1 < p <= 2):
+        return {"score": 0.0, "valid": False,
+                "error": f"p must satisfy 1 < p <= 2, got p={p}", "metrics": {}}
+    if r1 <= 0:
+        return {"score": 0.0, "valid": False,
+                "error": f"r1 must be positive, got r1={r1}", "metrics": {}}
+    if not (isinstance(j, int) or (isinstance(j, float) and j == int(j))) or int(j) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"j must be a positive integer, got j={j}", "metrics": {}}
+    j = int(j)
+    if r2 <= 0:
+        return {"score": 0.0, "valid": False,
+                "error": f"r2 must be positive, got r2={r2}", "metrics": {}}
+
     try:
         q = p / (p - 1.0)  # conjugate exponent: 1/p + 1/q = 1
 

@@ -50,6 +50,15 @@ def evaluate(output, n: int = _DEFAULT_N, **kwargs) -> dict:
         metrics : dict with raw_max_abs, n_used
     """
     try:
+        if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 1:
+            return {
+                "score": float("inf"),
+                "valid": False,
+                "error": f"n must be a positive integer, got n={n}",
+                "metrics": {},
+            }
+        n = int(n)
+
         try:
             coeffs = np.asarray(output, dtype=float)
         except Exception as exc:

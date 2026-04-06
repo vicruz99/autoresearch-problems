@@ -3,6 +3,12 @@ import numpy as np
 
 
 def evaluate(output: object, num_samples: int = 100000, **kwargs) -> dict:
+    if not (isinstance(num_samples, int) or (isinstance(num_samples, float) and num_samples == int(num_samples))) or int(num_samples) < 100:
+        return {"score": 0.0, "valid": False,
+                "error": f"num_samples must be an integer >= 100, got num_samples={num_samples}",
+                "metrics": {}}
+    num_samples = int(num_samples)
+
     try:
         if not isinstance(output, dict):
             return {"score": 0.0, "valid": False,

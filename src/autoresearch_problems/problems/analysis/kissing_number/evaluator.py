@@ -41,6 +41,11 @@ def evaluate(output: object, d: int = 3, **kwargs) -> dict:
         ``metrics`` = dict with ``num_spheres``, ``min_pairwise_dist``,
                       ``max_origin_dist_error``.
     """
+    if not (isinstance(d, int) or (isinstance(d, float) and d == int(d))) or int(d) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"d must be a positive integer >= 2, got d={d}", "metrics": {}}
+    d = int(d)
+
     try:
         centres = np.asarray(output, dtype=float)
     except Exception as exc:

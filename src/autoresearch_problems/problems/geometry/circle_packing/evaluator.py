@@ -29,6 +29,11 @@ def evaluate(output: object, n: int = 26, **kwargs) -> dict:
         ``error`` = description of the first error found, or empty string.
         ``metrics`` = dict with extra info (e.g. ``min_pairwise_distance``).
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 1, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         centres = np.asarray(output, dtype=float)
     except Exception as exc:

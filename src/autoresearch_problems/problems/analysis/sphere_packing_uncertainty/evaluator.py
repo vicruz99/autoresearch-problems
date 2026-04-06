@@ -45,8 +45,19 @@ def _build_laguerre_combination(m, n_dim, zs):
 
 
 def evaluate(output: object, m: int = 10, n_dim: int = 25, **kwargs) -> dict:
+    # Parameter validation
+    if not (isinstance(m, int) or (isinstance(m, float) and m == int(m))) or int(m) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"m must be a positive integer >= 1, got m={m}", "metrics": {}}
+    m = int(m)
+    if not (isinstance(n_dim, int) or (isinstance(n_dim, float) and n_dim == int(n_dim))) or int(n_dim) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"n_dim must be a positive integer >= 1, got n_dim={n_dim}", "metrics": {}}
+    n_dim = int(n_dim)
+
     if not HAS_SCIPY:
         return {"score": 0.0, "valid": False, "error": "scipy required", "metrics": {}}
+
     try:
         zs = np.asarray(output, dtype=float).flatten()
     except Exception as exc:

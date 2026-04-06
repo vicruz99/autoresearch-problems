@@ -50,20 +50,35 @@ def _union_volume_mc(x_pos: np.ndarray, y_pos: np.ndarray,
     return vol
 
 
-def evaluate(output, n: int = 8, **kwargs) -> dict:
+def evaluate(output, cap_n: int = 8, num_samples: int = 200_000, **kwargs) -> dict:
     """Evaluate 3D Kakeya needle positions.
 
     Parameters
     ----------
-    output : array-like, shape (2, n*n) or (n*n, 2)
+    output : array-like, shape (2, cap_n*cap_n) or (cap_n*cap_n, 2)
         Positions: output[0] = x coords, output[1] = y coords.
-    n : int
+    cap_n : int
         Grid size (default 8, giving 64 tubes).
+    num_samples : int
+        Number of Monte Carlo samples for volume estimation (default 200_000).
 
     Returns
     -------
     dict with keys: score, valid, error, metrics.
     """
+    if not (isinstance(cap_n, int) or (isinstance(cap_n, float) and cap_n == int(cap_n))) or int(cap_n) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"cap_n must be a positive integer >= 2, got cap_n={cap_n}",
+                "metrics": {}}
+    cap_n = int(cap_n)
+    if not (isinstance(num_samples, int) or (isinstance(num_samples, float) and num_samples == int(num_samples))) or int(num_samples) < 1000:
+        return {"score": 0.0, "valid": False,
+                "error": f"num_samples must be an integer >= 1000, got num_samples={num_samples}",
+                "metrics": {}}
+    num_samples = int(num_samples)
+
+    n = cap_n  # internal alias
+
     try:
         arr = np.array(output, dtype=float)
 
@@ -84,7 +99,7 @@ def evaluate(output, n: int = 8, **kwargs) -> dict:
                 "metrics": {},
             }
 
-        vol = _union_volume_mc(x_pos, y_pos, n)
+        vol = _union_volume_mc(x_pos, y_pos, n, num_samples=num_samples)
 
         # Reference: random baseline ~1/n^2 * extent^2 is hard to compute;
         # use the trivial upper bound of 1.0 as normalisation denominator.

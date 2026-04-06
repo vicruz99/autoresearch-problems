@@ -34,6 +34,25 @@ def evaluate(output, p: float = 4.0 / 3.0, q: float = 1.4,
     -------
     dict with keys: score (float), valid (bool), error (str), metrics (dict).
     """
+    # Parameter validation
+    if p <= 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"p must be > 1, got p={p}", "metrics": {}}
+    if q <= 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"q must be > 1, got q={q}", "metrics": {}}
+    if 1.0 / p + 1.0 / q < 1.0 - 1e-12:
+        return {"score": 0.0, "valid": False,
+                "error": f"Young's convolution requires 1/p + 1/q >= 1, got {1.0/p + 1.0/q:.6f}",
+                "metrics": {}}
+    if r1 <= 0:
+        return {"score": 0.0, "valid": False,
+                "error": f"r1 must be positive, got r1={r1}", "metrics": {}}
+    if not (isinstance(j, int) or (isinstance(j, float) and j == int(j))) or int(j) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"j must be a positive integer, got j={j}", "metrics": {}}
+    j = int(j)
+
     try:
         r = 1.0 / (1.0 / p + 1.0 / q - 1.0)  # r = 28/13 ≈ 2.154
 

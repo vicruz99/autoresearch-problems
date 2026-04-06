@@ -3,6 +3,11 @@ import itertools
 
 
 def evaluate(output: object, n: int = 64, **kwargs) -> dict:
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 3, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         points = [(int(p[0]), int(p[1])) for p in output]
     except Exception as exc:
