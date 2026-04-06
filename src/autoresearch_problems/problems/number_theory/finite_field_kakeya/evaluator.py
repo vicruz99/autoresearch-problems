@@ -14,10 +14,9 @@ and the final score is the average normalised size:
   score = average over p of  -(|K(p)| / reference_size(p, d))
 Higher (less negative) is better.
 
-solve() must accept (p, d) and return a 2-D integer array of shape (k, d) with
-entries in {0,…,p-1} for the given prime p.  The evaluator calls solve for each
-prime independently; the output passed to evaluate() must be a dict
-{p: np.ndarray} mapping each prime to its construction.
+solve() must accept (d, primes) and return a dict {p: np.ndarray} mapping each
+prime to its construction (a 2-D integer array of shape (k, d) with entries in
+{0,…,p-1}).  The evaluator receives this dict and scores each prime separately.
 
 Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0).
 """

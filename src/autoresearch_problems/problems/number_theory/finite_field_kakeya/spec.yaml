@@ -7,8 +7,8 @@ description: >
   Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
   construction is evaluated on several primes and the final score is the average
   normalised size  -(|K(p)| / reference_size(p, d))  over all tested primes.
-  Higher (less negative) is better.  solve(p, d) must return a 2-D integer array
-  of shape (k, d); the evaluator receives a dict {p: array} from solve(d, primes).
+  Higher (less negative) is better.  solve(d, primes) returns a dict
+  {p: array} where each array has shape (k, d) with entries in {0,…,p-1}.
 
 output_type: numpy_array
 function_name: solve
