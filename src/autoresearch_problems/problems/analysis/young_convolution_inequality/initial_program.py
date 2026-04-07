@@ -1,14 +1,10 @@
 import numpy as np
 
-# Fixed grid parameters (must match evaluator)
-R1 = 10.0
-J = 500
 
-
-def solve() -> np.ndarray:
+def solve(r1: float = 10.0, j: int = 500, **kwargs) -> np.ndarray:
     """Return values of two functions f and g on the grid.
 
-    Grid: xs = np.linspace(-R1, (J-1)*R1/J, 2*J)
+    Grid: xs = np.linspace(-r1, (j-1)*r1/j, 2*j)
 
     The evaluator computes Young's convolution quotient
         Q(f, g) = ||f * g||_{L^r} / (||f||_{L^p} * ||g||_{L^q})
@@ -16,11 +12,12 @@ def solve() -> np.ndarray:
 
     Returns
     -------
-    np.ndarray of shape (2, 2*J) = (2, 1000)
+    np.ndarray of shape (2, 2*j)
         Row 0: values of f.
         Row 1: values of g.
     """
-    xs = np.linspace(-R1, (J - 1) * R1 / J, 2 * J)
+    j = int(j)
+    xs = np.linspace(-r1, (j - 1) * r1 / j, 2 * j)
 
     # EVOLVE-BLOCK-START
     # Box functions — simple starting point; Gaussians are near-optimal.

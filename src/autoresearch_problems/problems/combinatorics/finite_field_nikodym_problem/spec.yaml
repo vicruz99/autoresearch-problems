@@ -1,15 +1,16 @@
 name: finite_field_nikodym_problem
 category: combinatorics
 description: >
-  Find a minimum-size Nikodym set N ⊆ F_q^2 where q = p^2 for a given prime p.
-  A set N is a Nikodym set if for every point x in F_q^2 there exists a
+  Find minimum-size Nikodym sets in F_q^2 (q = p^2) for multiple primes p.
+  A set N ⊆ F_q^2 is a Nikodym set if for every point x in F_q^2 there exists a
   direction v ∈ F_q^2 \ {0} such that the punctured line
       { x + t·v : t ∈ F_q, t ≠ 0 }
-  is entirely contained in N.  The objective is to MAXIMISE the complement
-  size  |F_q^2| − |N| (i.e., exclude as many points as possible while N
-  remains a valid Nikodym set).
-  Score = |F_q^2| − |N|.  Higher is better.
-  AlphaEvolve achieved a complement of ~24 000 for p=29.
+  is entirely contained in N.
+  Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
+  construction is evaluated across multiple primes p, and the final score is the
+  average normalised complement fraction  (|F_q^2| − |N|) / |F_q^2|.
+  Higher is better.  solve(d, primes) must return a dict {p: array} where each
+  array has shape (k, 2, 2) with values in {0, …, p-1}.
 
 output_type: numpy_array
 
@@ -19,12 +20,12 @@ evaluator_dependencies:
   - "numpy>=1.24"
 
 parameters:
-  p: 5
   d: 2
+  primes: [3, 5]
 
 timeout_seconds: 120.0
 maximize: true
-known_best_score: 50.0   # simple Unital-minus-BlockingSet construction for p=5
+known_best_score: null  # Exact optimum not known; AlphaEvolve found ~0.034 complement fraction for p=29
 
 source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
 tags:

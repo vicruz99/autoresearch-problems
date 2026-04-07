@@ -45,6 +45,15 @@ def evaluate(
         ``error`` = description of the first error found, or empty string.
         ``metrics`` = dict with extra info (e.g. ``num_bins``, ``num_items``).
     """
+    if not (isinstance(num_items, int) or (isinstance(num_items, float) and num_items == int(num_items))) or int(num_items) < 1:
+        return {
+            "score": 0.0,
+            "valid": False,
+            "error": f"num_items must be a positive integer >= 1, got num_items={num_items}",
+            "metrics": {},
+        }
+    num_items = int(num_items)
+
     if not callable(output):
         return {
             "score": 0.0,

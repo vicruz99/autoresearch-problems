@@ -84,6 +84,11 @@ def evaluate(output: Any, n: int = 10, **kwargs) -> dict:
         score: -(num_tiles / reference). Higher is better; -1.0 matches reference.
         valid: True iff all constraints satisfied.
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 1, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         score, valid, error, metrics = _score_tiles(output, n)
         return {"score": score, "valid": valid, "error": error, "metrics": metrics}

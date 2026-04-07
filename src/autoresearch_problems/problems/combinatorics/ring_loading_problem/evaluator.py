@@ -20,6 +20,12 @@ def _compute_alpha(u, v):
 
 
 def evaluate(output: object, m: int = 15, **kwargs) -> dict:
+    if not (isinstance(m, int) or (isinstance(m, float) and m == int(m))) or int(m) < 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"m must be an integer >= 3 (ring needs at least 3 nodes), got m={m}",
+                "metrics": {}}
+    m = int(m)
+
     try:
         params = list(output)
         if len(params) != m:

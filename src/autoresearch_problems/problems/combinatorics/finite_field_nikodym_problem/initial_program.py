@@ -10,23 +10,11 @@ def _find_non_square(p: int) -> int:
     raise ValueError(f"No non-square for p={p}")
 
 
-def solve(p: int = 5, d: int = 2) -> np.ndarray:
-    """Construct a Nikodym set in F_{p^2}^2 and return it as shape (k,2,2).
-
-    Returns
-    -------
-    np.ndarray of shape (k, 2, 2), dtype int64
-        Each row [[xa,xb],[ya,yb]] is a point in F_{p^2}^2.
-    """
-    # EVOLVE-BLOCK-START
-    if d != 2:
-        return np.zeros((0, d, 2), dtype=np.int64)
-
-    # Find a non-square element w for F_q = F_{p^2} = F_p[α]/(α²−w)
+def _construct_nikodym(p: int) -> np.ndarray:
+    """Build a Nikodym set in F_{p^2}^2 using the Unital-minus-BlockingSet method."""
     w = _find_non_square(p)
 
     class Fq:
-        """Element of F_q = F_p[α] / (α² − w)."""
         __slots__ = ("a", "b")
 
         def __init__(self, a, b):
@@ -55,27 +43,21 @@ def solve(p: int = 5, d: int = 2) -> np.ndarray:
     def norm(x: Fq) -> Fq:
         return Fq(x.a * x.a - x.b * x.b * w, 0)
 
-    # All elements of F_q
     all_fq = [Fq(a, b) for a in range(p) for b in range(p)]
 
-    # Build Unital U: {(x,y) ∈ F_q^2 : Trace(x) + Norm(y) = 0}
     unital = set()
     for x in all_fq:
         for y in all_fq:
             if (trace(x) + norm(y)).is_zero():
                 unital.add((x, y))
 
-    # Build Y_special: {u^2 + v·α : u,v ∈ F_p}
     alpha = Fq(0, 1)
     Y_special = set()
     for u in range(p):
         for v in range(p):
             Y_special.add(Fq(pow(u, 2, p), v))
 
-    # Blocking set B ⊆ U: points whose y-coordinate is in Y_special
     blocking = {(x, y) for x, y in unital if y in Y_special}
-
-    # Excluded set S = U \ B;  Nikodym set N = all_points \ S
     excluded = unital - blocking
     all_points = set(itertools.product(all_fq, repeat=2))
     nikodym = all_points - excluded
@@ -87,6 +69,32 @@ def solve(p: int = 5, d: int = 2) -> np.ndarray:
         result[i, 0, 1] = x.b
         result[i, 1, 0] = y.a
         result[i, 1, 1] = y.b
+    return result
+
+
+def solve(d: int = 2, primes=None) -> dict:
+    """Return Nikodym sets in F_{p^2}^2 for each prime in *primes*.
+
+    Parameters
+    ----------
+    d:
+        Dimension (must be 2).
+    primes:
+        List of prime integers.  Defaults to [3, 5].
+
+    Returns
+    -------
+    dict
+        Maps each prime p to a 3-D int64 array of shape (k, 2, 2) with values
+        in {0, …, p-1} representing a valid Nikodym set for F_{p^2}^2.
+    """
+    if primes is None:
+        primes = [3, 5]
+
+    # EVOLVE-BLOCK-START
+    result = {}
+    for p in primes:
+        result[p] = _construct_nikodym(p)
     # EVOLVE-BLOCK-END
 
     return result

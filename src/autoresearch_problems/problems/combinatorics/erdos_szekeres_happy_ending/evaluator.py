@@ -106,11 +106,13 @@ def evaluate(output, n: int = 6, **kwargs) -> dict:
         error   : description of the first error, or ''.
         metrics : dict with num_points, num_ngons, etc.
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 3:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 3, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         required = 2 ** (n - 2) + 1
-        if n < 3:
-            return {"score": 0.0, "valid": False,
-                    "error": "n must be >= 3", "metrics": {}}
 
         try:
             pts = np.asarray(output, dtype=float)

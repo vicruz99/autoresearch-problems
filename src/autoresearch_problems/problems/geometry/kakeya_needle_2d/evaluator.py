@@ -92,6 +92,11 @@ def evaluate(output, n: int = 32, **kwargs) -> dict:
     -------
     dict with keys: score, valid, error, metrics.
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 4:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 4, got n={n}", "metrics": {}}
+    n = int(n)
+
     try:
         x = list(output)
         if len(x) != n:

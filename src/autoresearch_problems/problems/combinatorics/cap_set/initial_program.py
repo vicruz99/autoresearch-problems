@@ -1,19 +1,19 @@
-"""Naive greedy seed solution for the Cap Set problem in F_3^8."""
+"""Naive greedy seed solution for the Cap Set problem."""
 
 import itertools
 
 import numpy as np
 
 
-def solve() -> np.ndarray:
-    """Greedy cap-set construction in F_3^8.
+def solve(n: int = 8, q: int = 3, **kwargs) -> np.ndarray:
+    """Greedy cap-set construction in F_q^n.
 
-    Iterates over all 3^8 = 6561 vectors and greedily adds each one to the
+    Iterates over all q^n vectors and greedily adds each one to the
     set if it does not create a three-term arithmetic progression with any
     two existing elements.
     """
-    n = 8
-    q = 3
+    n = int(n)
+    q = int(q)
     cap: list[tuple[int, ...]] = []
     cap_set: set[tuple[int, ...]] = set()
 

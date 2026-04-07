@@ -35,6 +35,16 @@ def evaluate(output: object, num_intervals: int = 600, **kwargs) -> dict:
         ``metrics`` = dict with ``c1``, ``sequence_length``, ``integral_f``,
                       and ``max_autoconv`` when valid; empty dict otherwise.
     """
+    # --- parameter validation ---
+    if not (isinstance(num_intervals, int) or (isinstance(num_intervals, float) and num_intervals == int(num_intervals))) or int(num_intervals) < 2:
+        return {
+            "score": float("inf"),
+            "valid": False,
+            "error": f"num_intervals must be a positive integer >= 2, got num_intervals={num_intervals}",
+            "metrics": {},
+        }
+    num_intervals = int(num_intervals)
+
     # --- validation ---
     sequence = output
     if not isinstance(sequence, list):

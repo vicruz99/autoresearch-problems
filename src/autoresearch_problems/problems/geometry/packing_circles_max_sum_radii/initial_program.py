@@ -2,10 +2,10 @@
 import numpy as np
 
 
-def solve() -> np.ndarray:
-    """Pack 26 equal circles in a grid inside the unit square."""
+def solve(n: int = 26, **kwargs) -> np.ndarray:
+    """Pack n equal circles in a grid inside the unit square."""
     # EVOLVE-BLOCK-START
-    n = 26
+    n = int(n)
     cols = int(np.ceil(np.sqrt(n)))
     rows = int(np.ceil(n / cols))
     r = 0.5 / cols

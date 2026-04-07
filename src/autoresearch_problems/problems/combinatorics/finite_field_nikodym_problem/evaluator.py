@@ -1,29 +1,48 @@
 # Adapted from google-deepmind/alphaevolve_repository_of_problems (Apache 2.0)
 """Evaluator for the Finite Field Nikodym Problem in F_q^2, q = p^2.
 
-The candidate's solve() function must return a NumPy integer array of shape
-(k, 2, 2) representing k points in F_q^2.  Each point is encoded as
+The candidate's solve() function must return a dict {p: np.ndarray} where
+each array has shape (k, 2, 2) representing k points in F_q^2 (q = p^2).
+Each point is encoded as [[x_a, x_b], [y_a, y_b]] where the coordinates are
+elements of F_q = F_{p^2} = F_p[α]/(α² − w), with w the smallest quadratic
+non-residue mod p.
 
-    [[x_a, x_b], [y_a, y_b]]
-
-where the first coordinate x = x_a + x_b*alpha and second y = y_a + y_b*alpha
-are elements of F_q = F_{p^2}.  Here alpha is a root of x^2 - w over F_p,
-and w is the smallest quadratic non-residue mod p.
-
-The set N must be a valid Nikodym set: for every point x in F_q^2 there must
+A set N must be a valid Nikodym set: for every point x in F_q^2 there must
 exist a non-zero direction v in F_q^2 such that the punctured line
     { x + t*v : t in F_q, t != 0 }
 is entirely contained in N.
 
-Score = |F_q^2| - |N|.  Higher is better (more points excluded).
+Following the AlphaEvolve paper ("Mathematical Discovery at Scale"), the
+construction is evaluated across multiple primes p, and the final score is the
+average normalised complement fraction  (|F_q^2| − |N|) / |F_q^2|  over all
+tested primes.  Higher is better.
 
 This file is standalone — it does NOT import from autoresearch_problems.
 """
 
 import numpy as np
 
-_DEFAULT_P = 5
-_DEFAULT_D = 2
+_DEFAULT_PRIMES = [3, 5]
+
+
+# ---------------------------------------------------------------------------
+# Primality check
+# ---------------------------------------------------------------------------
+
+def _is_prime(n: int) -> bool:
+    """Return True iff n is a prime number."""
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    i = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -81,39 +100,19 @@ def _get_tables(p: int):
 # ---------------------------------------------------------------------------
 
 def _is_valid_nikodym(construction_set: set, p: int, add_table, mul_table) -> bool:
-    """Return True if construction_set is a valid Nikodym set in F_q^2.
-
-    Uses the canonical direction representatives:
-      - (1, m) for each m in F_q   → q directions
-      - (0, 1)                     → 1 direction
-    Each element of F_q is an index a*p + b.
-    A point in F_q^2 is a tuple (idx1, idx2) of two F_q indices.
-    """
+    """Return True if construction_set is a valid Nikodym set in F_q^2."""
     q = p * p
-    # Build all non-zero t values (all q-1 elements t ≠ 0)
     nonzero_ts = [t for t in range(q) if t != 0]
 
-    # idx_one = element 1 in F_q = index 1*p + 0 = p (for p > 1, otherwise 1)
-    # Actually element 1 = (1, 0) = index 1*p + 0 = p ... no
-    # (a, b) means a + b*alpha, so (1, 0) → index 1*p + 0 = p if p=5 then index 5
-    # But (0, 1) → index 0*p + 1 = 1
-    # Wait: index = a*p + b. Element 1 = (a=1, b=0) → index 1*p + 0 = p
-    # Hmm but for p=5 that's index 5. Let me be careful.
-    # Element zero = (0,0) → index 0
-    # Element one = (1,0) → index p
-    idx_zero = 0          # (0, 0)
-    idx_one = 1 * p + 0  # (1, 0)
+    idx_one = 1 * p + 0  # element 1 = (1, 0) in F_q
 
     for x1 in range(q):
         for x2 in range(q):
             found = False
-            # Directions (v1=1, v2=m) for m in F_q
+            # Directions (v1=idx_one, v2=m) for m in F_q
             for m in range(q):
-                # Check all t ≠ 0 in F_q: is x + t*(1, m) in N?
                 all_in = True
                 for t in nonzero_ts:
-                    # t*(1,0) = (t,0)? No: t*(1,m) = (t*1, t*m) in F_q
-                    # Actually v1=idx_one, v2=m. t*v1 = mul[t, idx_one], t*v2 = mul[t, m]
                     tv1 = mul_table[t, idx_one]
                     tv2 = mul_table[t, m]
                     p1 = add_table[x1, tv1]
@@ -126,12 +125,11 @@ def _is_valid_nikodym(construction_set: set, p: int, add_table, mul_table) -> bo
                     break
             if found:
                 continue
-            # Direction (v1=0, v2=1)
+            # Direction (v1=0, v2=idx_one)
             all_in = True
             for t in nonzero_ts:
                 tv2 = mul_table[t, idx_one]
-                # v1=0 → t*v1=0, v2=idx_one → t*v2 = mul[t, idx_one]
-                p1 = x1  # add 0
+                p1 = x1
                 p2 = add_table[x2, tv2]
                 if (p1, p2) not in construction_set:
                     all_in = False
@@ -143,91 +141,140 @@ def _is_valid_nikodym(construction_set: set, p: int, add_table, mul_table) -> bo
     return True
 
 
+def _evaluate_single_nikodym(arr_raw, p: int) -> dict:
+    """Score one Nikodym construction for prime p (d fixed to 2)."""
+    q = p * p
+    total = q * q  # |F_q^2|
+
+    try:
+        arr = np.asarray(arr_raw, dtype=np.int64)
+    except Exception as exc:
+        return {"score": None, "error": f"p={p}: cannot convert to array: {exc}"}
+
+    if arr.ndim != 3 or arr.shape[1] != 2 or arr.shape[2] != 2:
+        return {"score": None,
+                "error": f"p={p}: expected shape (k,2,2), got {arr.shape}"}
+
+    if arr.size > 0 and (arr.min() < 0 or arr.max() >= p):
+        return {"score": None,
+                "error": f"p={p}: values must be in {{0, …, {p - 1}}}"}
+
+    unique_set: set = set()
+    for row in arr:
+        pt = (int(row[0, 0]) * p + int(row[0, 1]),
+              int(row[1, 0]) * p + int(row[1, 1]))
+        unique_set.add(pt)
+
+    k = len(unique_set)
+
+    add_table, mul_table, _ = _get_tables(p)
+
+    if not _is_valid_nikodym(unique_set, p, add_table, mul_table):
+        return {"score": None,
+                "error": f"p={p}: not a valid Nikodym set",
+                "nikodym_set_size": k, "total_space": total}
+
+    # Normalised complement fraction so scores are comparable across primes
+    norm_score = float(total - k) / float(total)
+    return {"score": norm_score, "error": "",
+            "nikodym_set_size": k, "complement_size": total - k,
+            "total_space": total}
+
+
 # ---------------------------------------------------------------------------
 # Public evaluate interface
 # ---------------------------------------------------------------------------
 
-def evaluate(output, p: int = _DEFAULT_P, d: int = _DEFAULT_D, **kwargs) -> dict:
-    """Score a candidate Nikodym set.
+def evaluate(output, d: int = 2, primes=None, **kwargs) -> dict:
+    """Score candidate Nikodym sets across multiple primes.
+
+    Following the AlphaEvolve paper, the construction is evaluated on several
+    primes p (with q = p^2) for dimension d=2.  The final score is the average
+    normalised complement fraction  (|F_q^2| − |N|) / |F_q^2|.  Higher is better.
 
     Parameters
     ----------
     output:
-        Integer array of shape (k, 2, 2) with values in {0, …, p-1}.
-        Each row [[xa,xb],[ya,yb]] represents a point in F_{p^2}^2.
-    p:
-        Prime defining F_q with q = p^2.
+        A dict mapping each prime p (int) to an integer array of shape (k, 2, 2)
+        with values in {0, …, p-1}.  Each row [[xa,xb],[ya,yb]] represents a
+        point in F_{p^2}^2.
     d:
         Dimension (must be 2).
+    primes:
+        List of primes to evaluate.  Defaults to [3, 5].
 
     Returns
     -------
     dict
-        score   : |F_q^2| − |N|  – **higher is better**
-        valid   : True iff N is a valid Nikodym set with correct format
-        error   : "" on success, description of first problem otherwise
-        metrics : dict with nikodym_set_size, complement_size, total_space
+        score   : average normalised complement fraction; higher is better.
+        valid   : True iff every prime's construction is a valid Nikodym set.
+        error   : "" on success, description of first problem otherwise.
+        metrics : per-prime breakdown plus aggregate statistics.
     """
     try:
-        q = p * p
-        total = q ** d  # = q^2 for d=2
-
-        try:
-            arr = np.asarray(output, dtype=np.int64)
-        except Exception as exc:
-            return {"score": 0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
-
         if d != 2:
-            return {"score": 0, "valid": False, "error": "Only d=2 is supported", "metrics": {}}
+            return {"score": 0, "valid": False,
+                    "error": "Only d=2 is supported", "metrics": {}}
 
-        if arr.ndim != 3 or arr.shape[1] != 2 or arr.shape[2] != 2:
+        if primes is None:
+            primes = _DEFAULT_PRIMES
+
+        primes = list(primes)
+        if not primes:
+            return {"score": 0, "valid": False,
+                    "error": "primes list is empty", "metrics": {}}
+
+        bad_primes = [p for p in primes if not _is_prime(p)]
+        if bad_primes:
+            return {"score": 0, "valid": False,
+                    "error": f"Not prime: {bad_primes}", "metrics": {}}
+
+        if not isinstance(output, dict):
+            return {"score": 0, "valid": False,
+                    "error": ("output must be a dict {p: construction_array}; "
+                              f"got {type(output).__name__}"),
+                    "metrics": {}}
+
+        per_prime: dict = {}
+        scores: list = []
+        errors: list = []
+
+        for p in primes:
+            if p not in output:
+                errors.append(f"p={p}: missing from output dict")
+                per_prime[p] = {"score": None, "error": "missing from output"}
+                continue
+
+            result = _evaluate_single_nikodym(output[p], p)
+            per_prime[p] = result
+            if result["score"] is None:
+                errors.append(result["error"])
+            else:
+                scores.append(result["score"])
+
+        if not scores:
             return {
                 "score": 0,
                 "valid": False,
-                "error": f"Expected shape (k,2,2), got {arr.shape}",
-                "metrics": {},
+                "error": "; ".join(errors) if errors else "no valid constructions",
+                "metrics": {"per_prime": per_prime},
             }
 
-        if arr.size > 0 and (arr.min() < 0 or arr.max() >= p):
-            return {
-                "score": 0,
-                "valid": False,
-                "error": f"Array values must be in {{0, …, {p-1}}}",
-                "metrics": {},
-            }
+        avg_score = sum(scores) / len(scores)
+        all_valid = len(errors) == 0
 
-        # De-duplicate and convert to set of tuples
-        unique_set: set = set()
-        for row in arr:
-            pt = (int(row[0, 0]) * p + int(row[0, 1]),
-                  int(row[1, 0]) * p + int(row[1, 1]))
-            unique_set.add(pt)
-
-        k = len(unique_set)
-
-        add_table, mul_table, _ = _get_tables(p)
-
-        is_valid = _is_valid_nikodym(unique_set, p, add_table, mul_table)
-
-        if not is_valid:
-            return {
-                "score": 0,
-                "valid": False,
-                "error": "Not a valid Nikodym set",
-                "metrics": {"nikodym_set_size": k, "complement_size": 0, "total_space": total},
-            }
-
-        complement = total - k
         return {
-            "score": complement,
-            "valid": True,
-            "error": "",
+            "score": avg_score,
+            "valid": all_valid,
+            "error": "; ".join(errors) if errors else "",
             "metrics": {
-                "nikodym_set_size": k,
-                "complement_size": complement,
-                "total_space": total,
+                "per_prime": per_prime,
+                "avg_normalized_score": avg_score,
+                "num_valid_primes": len(scores),
+                "num_primes": len(primes),
             },
         }
 
     except Exception as exc:
-        return {"score": 0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+        return {"score": 0, "valid": False,
+                "error": f"Unexpected error: {exc}", "metrics": {}}

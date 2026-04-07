@@ -1,15 +1,15 @@
 import numpy as np
 
 
-def solve() -> np.ndarray:
-    """Place 16 points in 2D to maximize the ratio of minimum to maximum distance.
+def solve(n: int = 16, d: int = 2, **kwargs) -> np.ndarray:
+    """Place n points in d-dimensional space to maximize the ratio of minimum to maximum distance.
 
     Returns
     -------
-    np.ndarray of shape (16, 2)
+    np.ndarray of shape (n, d)
     """
-    n = 16
-    d = 2
+    n = int(n)
+    d = int(d)
     np.random.seed(42)
     points = np.random.randn(n, d)
     return points

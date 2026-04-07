@@ -34,6 +34,18 @@ def evaluate(output, p: float = 4.0, r1: float = 15.0,
     -------
     dict with keys: score (float), valid (bool), error (str), metrics (dict).
     """
+    # Parameter validation
+    if p <= 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"p must be > 2, got p={p}", "metrics": {}}
+    if r1 <= 0:
+        return {"score": 0.0, "valid": False,
+                "error": f"r1 must be positive, got r1={r1}", "metrics": {}}
+    if not (isinstance(j, int) or (isinstance(j, float) and j == int(j))) or int(j) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"j must be a positive integer, got j={j}", "metrics": {}}
+    j = int(j)
+
     try:
         try:
             f_values = np.asarray(output, dtype=float).ravel()

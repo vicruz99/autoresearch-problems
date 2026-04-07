@@ -37,6 +37,15 @@ def evaluate(output: object, n: int = 8, q: int = 3, **kwargs) -> dict:
         ``error`` = description of the first error found, or empty string.
         ``metrics`` = dict with extra info (e.g. ``set_size``).
     """
+    if not (isinstance(n, int) or (isinstance(n, float) and n == int(n))) or int(n) < 1:
+        return {"score": 0.0, "valid": False,
+                "error": f"n must be a positive integer >= 1, got n={n}", "metrics": {}}
+    n = int(n)
+    if not (isinstance(q, int) or (isinstance(q, float) and q == int(q))) or int(q) < 2:
+        return {"score": 0.0, "valid": False,
+                "error": f"q must be an integer >= 2, got q={q}", "metrics": {}}
+    q = int(q)
+
     try:
         S = np.asarray(output, dtype=int)
     except Exception as exc:
