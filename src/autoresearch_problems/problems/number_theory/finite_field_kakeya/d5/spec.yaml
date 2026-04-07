@@ -1,0 +1,33 @@
+name: finite_field_kakeya_d5
+category: number_theory
+description: >
+  Find minimum-size Kakeya sets in F_p^5 (the 5-dimensional vector space over GF(p)).
+  A Kakeya set K must contain a complete line in every direction: for every non-zero
+  v in F_p^5 there exists x in K such that {x + t*v mod p : t in F_p} ⊆ K.
+  The construction is evaluated on primes p in [3,5] and scored as the
+  average normalised size -(|K(p)| / reference_size(p, 5)) over all tested primes.
+  Higher (less negative) is better.
+  d=5 is computationally demanding; even p=5 produces a large search space.
+
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+
+parameters:
+  d: 5
+  primes: [3, 5]
+
+timeout_seconds: 600.0
+maximize: true
+known_best_score: null
+
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - number_theory
+  - finite-fields
+  - kakeya
+  - combinatorics
+  - alphaevolve
+  - open-problem
