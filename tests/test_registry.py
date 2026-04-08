@@ -91,3 +91,43 @@ def test_problem_spec_has_no_evaluate_method():
     """ProblemSpec must NOT have an evaluate() method."""
     spec = registry.load("combinatorics/cap_set")
     assert not hasattr(spec, "evaluate")
+
+
+# ── registry.load() with field overrides ─────────────────────────────────────
+
+def test_load_with_parameters_override_merges():
+    """parameters override should merge with spec.yaml values, caller wins."""
+    spec = registry.load("combinatorics/cap_set", parameters={"n": 10})
+    assert spec.parameters["n"] == 10
+    assert spec.parameters["q"] == 3  # preserved from spec.yaml
+
+
+def test_load_with_parameters_override_full_replace():
+    """Passing all parameters replaces them entirely via merge."""
+    spec = registry.load("combinatorics/cap_set", parameters={"n": 5, "q": 2})
+    assert spec.parameters["n"] == 5
+    assert spec.parameters["q"] == 2
+
+
+def test_load_with_scalar_field_override():
+    """Scalar fields like known_best_score are directly replaced."""
+    spec = registry.load("analysis/kissing_number", known_best_score=99.0)
+    assert spec.known_best_score == 99.0
+
+
+def test_load_with_combined_overrides():
+    """Multiple field overrides can be combined."""
+    spec = registry.load(
+        "analysis/kissing_number",
+        parameters={"d": 4},
+        known_best_score=24.0,
+    )
+    assert spec.parameters["d"] == 4
+    assert spec.known_best_score == 24.0
+
+
+def test_load_without_overrides_unchanged():
+    """Calling load() with no overrides behaves exactly as before."""
+    spec = registry.load("combinatorics/cap_set")
+    assert spec.parameters["n"] == 8
+    assert spec.parameters["q"] == 3

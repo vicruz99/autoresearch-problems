@@ -174,3 +174,79 @@ def test_run_evaluation_batch_handles_errors():
 def test_run_evaluation_batch_exported_from_init():
     from autoresearch_problems import run_evaluation_batch as rb
     assert callable(rb)
+
+
+# ── run_evaluation: parameters kwarg ─────────────────────────────────────────
+
+def test_run_evaluation_parameters_override():
+    """parameters kwarg should override spec.parameters for the evaluator."""
+    evaluator_code = """
+def evaluate(output, n=8, **kwargs):
+    return {"score": float(n), "valid": True, "error": "", "metrics": {}}
+"""
+    spec = ProblemSpec(
+        name="param_override_test",
+        category="test",
+        description="",
+        output_type="any",
+        evaluator_code=evaluator_code,
+        evaluator_entrypoint="evaluate",
+        evaluator_dependencies=[],
+        parameters={"n": 8},
+    )
+    result = run_evaluation(spec, None, parameters={"n": 20})
+    assert result.valid
+    assert result.score == 20.0
+
+
+def test_run_evaluation_parameters_partial_override():
+    """Partial parameters override merges with spec.parameters."""
+    evaluator_code = """
+def evaluate(output, n=1, q=1, **kwargs):
+    return {"score": float(n + q), "valid": True, "error": "", "metrics": {}}
+"""
+    spec = ProblemSpec(
+        name="partial_override_test",
+        category="test",
+        description="",
+        output_type="any",
+        evaluator_code=evaluator_code,
+        evaluator_entrypoint="evaluate",
+        evaluator_dependencies=[],
+        parameters={"n": 8, "q": 3},
+    )
+    # Override only n; q should remain 3 from spec.parameters
+    result = run_evaluation(spec, None, parameters={"n": 10})
+    assert result.valid
+    assert result.score == 13.0  # 10 + 3
+
+
+def test_run_evaluation_parameters_none_unchanged():
+    """Passing parameters=None should behave identically to not passing it."""
+    spec = registry.load("combinatorics/cap_set")
+    import numpy as np
+    S = np.array([[0, 0, 0, 0, 0, 0, 0, 0]])
+    result_default = run_evaluation(spec, S)
+    result_none = run_evaluation(spec, S, parameters=None)
+    assert result_default.valid == result_none.valid
+    assert result_default.score == result_none.score
+
+
+def test_run_evaluation_spec_not_mutated():
+    """The spec.parameters dict must not be modified by run_evaluation()."""
+    evaluator_code = """
+def evaluate(output, n=1, **kwargs):
+    return {"score": float(n), "valid": True, "error": "", "metrics": {}}
+"""
+    spec = ProblemSpec(
+        name="immutable_test",
+        category="test",
+        description="",
+        output_type="any",
+        evaluator_code=evaluator_code,
+        evaluator_entrypoint="evaluate",
+        evaluator_dependencies=[],
+        parameters={"n": 8},
+    )
+    run_evaluation(spec, None, parameters={"n": 99})
+    assert spec.parameters["n"] == 8  # unchanged
