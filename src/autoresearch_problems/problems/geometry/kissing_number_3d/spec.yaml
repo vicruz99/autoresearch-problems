@@ -1,0 +1,26 @@
+name: kissing_number_3d
+category: geometry
+description: >
+  Kissing number problem in dimension 3: find the maximum number of
+  non-overlapping unit spheres that can simultaneously touch a central unit
+  sphere in 3-dimensional space. Equivalently, find a set C ⊂ R^3 with
+  0 ∉ C such that min_{x≠y} ||x-y|| ≥ max_x ||x|| and |C| is maximised.
+  K(3) = 12 is proved (1953); this variant is pedagogical/solved.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.10"
+parameters:
+  dimension: 3
+timeout_seconds: 120.0
+maximize: true
+known_best_score: 12
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - geometry
+  - kissing-number
+  - sphere-packing
+  - alphaevolve
+  - solved

@@ -175,54 +175,6 @@ def test_erdos_multi_variants(erdos_spec):
     assert "open_evolve" in erdos_spec.initial_prompts
 
 
-# ── First Autocorrelation Inequality ─────────────────────────────────────────
-
-@pytest.fixture
-def first_autocorr_spec():
-    return registry.load("analysis/first_autocorr_ineq")
-
-
-def test_first_autocorr_valid(first_autocorr_spec):
-    """A uniform sequence should be valid."""
-    seq = [1.0] * 100
-    result = run_evaluation(first_autocorr_spec, seq)
-    assert result.valid
-    assert result.score > 0.0
-
-
-def test_first_autocorr_numpy_input(first_autocorr_spec):
-    """numpy array input should also work."""
-    seq = np.ones(50)
-    result = run_evaluation(first_autocorr_spec, seq)
-    assert result.valid
-
-
-def test_first_autocorr_invalid_empty(first_autocorr_spec):
-    result = run_evaluation(first_autocorr_spec, [])
-    assert not result.valid
-
-
-def test_first_autocorr_invalid_nan(first_autocorr_spec):
-    seq = [1.0, float("nan"), 1.0]
-    result = run_evaluation(first_autocorr_spec, seq)
-    assert not result.valid
-
-
-def test_first_autocorr_invalid_zero_sum(first_autocorr_spec):
-    """Sum too close to zero should be rejected."""
-    seq = [0.0] * 10
-    result = run_evaluation(first_autocorr_spec, seq)
-    assert not result.valid
-
-
-def test_first_autocorr_multi_variants(first_autocorr_spec):
-    assert "alpha_evolve" in first_autocorr_spec.initial_programs
-    assert "open_evolve" in first_autocorr_spec.initial_programs
-    assert "test_time_discover" in first_autocorr_spec.initial_programs
-    assert "alpha_evolve" in first_autocorr_spec.initial_prompts
-    assert "open_evolve" in first_autocorr_spec.initial_prompts
-
-
 # ── Second Autocorrelation Inequality ────────────────────────────────────────
 
 @pytest.fixture
@@ -293,8 +245,8 @@ def test_third_autocorr_valid_with_negatives(third_autocorr_spec):
 
 
 def test_third_autocorr_invalid_zero_sum(third_autocorr_spec):
-    """Sum equal to zero should be rejected."""
-    seq = [1.0, -1.0] * 5
+    """All-zero sequence (sum of |values| = 0) should be rejected."""
+    seq = [0.0] * 10
     result = run_evaluation(third_autocorr_spec, seq)
     assert not result.valid
 

@@ -19,7 +19,9 @@ def test_list_problems_returns_all():
     assert "combinatorics/cap_set" in problems
     assert "combinatorics/online_bin_packing" in problems
     assert "geometry/circle_packing" in problems
-    assert "analysis/kissing_number" in problems
+    assert "geometry/kissing_number_3d" in problems
+    assert "geometry/kissing_number_11d" in problems
+    assert "analysis/kissing_number" not in problems
 
 
 def test_list_problems_filtered_by_category():
@@ -61,13 +63,13 @@ def test_load_online_bin_packing_returns_problem_spec():
     assert spec.parameters["num_items"] == 100
 
 
-def test_load_kissing_number_returns_problem_spec():
-    spec = registry.load("analysis/kissing_number")
+def test_load_kissing_number_3d_returns_problem_spec():
+    spec = registry.load("geometry/kissing_number_3d")
     assert isinstance(spec, ProblemSpec)
-    assert spec.name == "kissing_number"
-    assert spec.category == "analysis"
-    assert spec.parameters["d"] == 3
-    assert spec.known_best_score == 12.0
+    assert spec.name == "kissing_number_3d"
+    assert spec.category == "geometry"
+    assert spec.parameters["dimension"] == 3
+    assert spec.known_best_score == 12
 
 
 def test_load_problem_has_optional_files():
@@ -76,8 +78,8 @@ def test_load_problem_has_optional_files():
     assert spec.initial_program is not None and len(spec.initial_program) > 0
 
 
-def test_load_kissing_number_has_optional_files():
-    spec = registry.load("analysis/kissing_number")
+def test_load_kissing_number_3d_has_optional_files():
+    spec = registry.load("geometry/kissing_number_3d")
     assert spec.initial_prompt is not None and len(spec.initial_prompt) > 0
     assert spec.initial_program is not None and len(spec.initial_program) > 0
 

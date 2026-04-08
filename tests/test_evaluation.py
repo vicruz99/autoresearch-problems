@@ -84,7 +84,7 @@ def test_run_evaluation_missing_entrypoint():
 
 def test_run_evaluation_kissing_number():
     """The icosahedron initial program should achieve score 12."""
-    spec = registry.load("analysis/kissing_number")
+    spec = registry.load("geometry/kissing_number_3d")
 
     # Execute the initial_program source to get the solve() function
     ns: dict = {}
