@@ -18,8 +18,9 @@ def solve(dimension: int = 3) -> np.ndarray:
     phi = (1.0 + np.sqrt(5.0)) / 2.0  # golden ratio
 
     # 12 vertices of a regular icosahedron (un-normalised)
-    # All vertices have norm sqrt(1 + phi^2) = sqrt(1 + phi^2)
-    # Edge length equals norm, so the set-C lemma is satisfied with margin = 0.
+    # All vertices have norm sqrt(1 + phi^2) ≈ 1.902
+    # The minimum edge length between adjacent vertices also equals sqrt(1 + phi^2),
+    # so min pairwise distance == max norm and the set-C lemma holds with margin 0.
     vertices = np.array([
         [ 0,  1,  phi],
         [ 0, -1,  phi],
