@@ -8,14 +8,12 @@ Constraints:
   - h values must be in [0, 1]
   - ∫ h(x) dx = 1  (i.e., sum(h) * dx = 1 where dx = 2/n)
 
-Score: BENCHMARK / c5_bound  (higher is better; > 1 means a new record)
+Score: raw c5 value (lower is better). AlphaEvolve achieved C₅ ≤ 0.3809.
 
 This file is standalone — it does NOT import from autoresearch_problems.
 """
 
 import numpy as np
-
-BENCHMARK = 0.38092303510845016  # found by AlphaEvolve and AlphaEvolve v2
 
 
 def _compute_c5(sequence: np.ndarray) -> float:
@@ -36,15 +34,15 @@ def evaluate(output, **kwargs) -> dict:
     Returns
     -------
     dict
-        score  : BENCHMARK / c5_bound (higher is better)
+        score  : raw c5 value (lower is better)
         valid  : True iff all constraints are satisfied
         error  : "" on success, description of first error otherwise
-        metrics: dict with c5_bound, sequence_length
+        metrics: dict with c5, sequence_length
     """
     try:
         if not isinstance(output, (list, np.ndarray)):
             return {
-                "score": 0.0,
+                "score": float("inf"),
                 "valid": False,
                 "error": f"Expected list or np.ndarray, got {type(output).__name__}",
                 "metrics": {},
@@ -53,17 +51,17 @@ def evaluate(output, **kwargs) -> dict:
         try:
             seq = np.asarray(output, dtype=float)
         except Exception as exc:
-            return {"score": 0.0, "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
+            return {"score": float("inf"), "valid": False, "error": f"Cannot convert to array: {exc}", "metrics": {}}
 
         if seq.ndim != 1 or len(seq) == 0:
-            return {"score": 0.0, "valid": False, "error": "Sequence must be a non-empty 1-D array", "metrics": {}}
+            return {"score": float("inf"), "valid": False, "error": "Sequence must be a non-empty 1-D array", "metrics": {}}
 
         if not np.isfinite(seq).all():
-            return {"score": 0.0, "valid": False, "error": "Sequence contains NaN or Inf values", "metrics": {}}
+            return {"score": float("inf"), "valid": False, "error": "Sequence contains NaN or Inf values", "metrics": {}}
 
         if np.any(seq < 0) or np.any(seq > 1):
             return {
-                "score": 0.0,
+                "score": float("inf"),
                 "valid": False,
                 "error": f"h(x) values must be in [0, 1]; range was [{seq.min():.4g}, {seq.max():.4g}]",
                 "metrics": {},
@@ -73,21 +71,20 @@ def evaluate(output, **kwargs) -> dict:
         integral = float(np.sum(seq) * dx)
         if not np.isclose(integral, 1.0, atol=1e-4):
             return {
-                "score": 0.0,
+                "score": float("inf"),
                 "valid": False,
                 "error": f"Integral of h must be 1.0; got {integral:.6f}",
                 "metrics": {},
             }
 
         c5 = _compute_c5(seq)
-        score = BENCHMARK / c5 if c5 > 0 else 0.0
 
         return {
-            "score": score,
+            "score": float(c5),
             "valid": True,
             "error": "",
-            "metrics": {"c5_bound": c5, "sequence_length": len(seq)},
+            "metrics": {"c5": float(c5), "sequence_length": len(seq)},
         }
 
     except Exception as exc:
-        return {"score": 0.0, "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}
+        return {"score": float("inf"), "valid": False, "error": f"Unexpected error: {exc}", "metrics": {}}

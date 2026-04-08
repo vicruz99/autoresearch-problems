@@ -1,28 +1,23 @@
 name: erdos_min_overlap
 category: analysis
 description: >
-  Find a step function h: [0, 2] → [0, 1] that minimizes the Erdős minimum
-  overlap constant C₅ = max_k ∫ h(x)(1-h(x+k)) dx, subject to ∫h(x)dx = 1
-  and 0 ≤ h ≤ 1. The score is BENCHMARK / c5_bound (higher means closer to or
-  beating the known upper bound).
-
+  Find a step function h: [0,2] → [0,1] with ∫h=1 that minimizes the Erdős
+  minimum overlap constant C₅ = max_k ∫h(x)(1-h(x+k))dx. Lower is better.
+  AlphaEvolve achieved C₅ ≤ 0.3809.
 output_type: numpy_array
-
 function_name: solve
 evaluator_entrypoint: evaluate
 evaluator_dependencies:
   - "numpy>=1.24"
-
 parameters: {}
-
 timeout_seconds: 60.0
-maximize: true
-known_best_score: 1.0
-
-source: "https://github.com/SakanaAI/ShinkaEvolve"
+maximize: false
+known_best_score: 0.38092303510845016
+source: "AlphaEvolve (Google DeepMind)"
 tags:
   - analysis
+  - open-problem
   - autocorrelation
   - step-function
   - erdos
-  - alphaevolve
+  - additive-combinatorics

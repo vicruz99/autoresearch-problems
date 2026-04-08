@@ -7,7 +7,7 @@ max_k ∫ h(x)(1 - h(x+k)) dx
 
 This minimal value provides a tight upper bound for the constant C5.
 
-Current best known upper bound: C5 ≤ 0.38092303510845016
+Current best known upper bound: C5 ≤ 0.38092303510845016 (AlphaEvolve).
 Goal: Find a step function `h` that results in a C5 value lower than 0.38092303510845016.
 
 CONSTRAINTS:
@@ -15,8 +15,8 @@ CONSTRAINTS:
 2. The integral of h(x) over [0, 2] must be exactly 1.
 
 PERFORMANCE METRICS:
-- c5_bound: The bound found by the program.
-- score: 0.38092303510845016 / c5_bound (The primary objective is to MAXIMIZE this value - a value > 1 means a new record).
+- c5: The bound found by the program.
+- score: The primary objective is to MINIMIZE c5 (lower is better; a new record means c5 < 0.38092303510845016).
 - sequence_length: number of points used in the discretization.
 
 Your `solve()` function must return a 1-D numpy array of float values in [0, 1]
