@@ -1,0 +1,26 @@
+name: kissing_number_11d
+category: geometry
+description: >
+  Kissing number problem in dimension 11: find the maximum number of
+  non-overlapping unit spheres that can simultaneously touch a central unit
+  sphere in 11-dimensional space. Equivalently, find a set C ⊂ R^11 with
+  0 ∉ C such that min_{x≠y} ||x-y|| ≥ max_x ||x|| and |C| is maximised.
+  AlphaEvolve improved the lower bound from 592 to 593.
+output_type: numpy_array
+function_name: solve
+evaluator_entrypoint: evaluate
+evaluator_dependencies:
+  - "numpy>=1.24"
+  - "scipy>=1.10"
+parameters:
+  dimension: 11
+timeout_seconds: 120.0
+maximize: true
+known_best_score: 593
+source: "https://github.com/google-deepmind/alphaevolve_repository_of_problems"
+tags:
+  - geometry
+  - kissing-number
+  - sphere-packing
+  - alphaevolve
+  - open-problem
